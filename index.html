@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://icons8.com">
-    <title>Global Auto Solar Clock</title>
+    <title>Autonomous Solar Clock</title>
     <style>
         html, body {
             margin: 0; padding: 0; height: 100%; width: 100%;
@@ -30,69 +30,54 @@
 <body>
 
     <div class="clock-card">
-        <div class="status" id="clock-status">Syncing Location...</div>
+        <div class="status">Autonomous Solar Tracking</div>
         <div class="time-display"><span id="solar-time">00:00:00</span><span id="ampm">--</span></div>
-        <div class="geo-info" id="location-label">Checking network positioning...</div>
+        <div class="geo-info" id="location-label">Calculating local solar base...</div>
     </div>
 
     <script>
-        // Default base longitude fallback (Bacoor) while network fetches
-        let liveLongitude = 120.9421; 
-        let locationName = "Bacoor, PH";
-
-        // Instantly check internet routing to get current country positioning
-        function detectGlobalLocation() {
-            fetch('https://ipapi.co')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.longitude) {
-                        liveLongitude = data.longitude;
-                        locationName = `${data.city}, ${data.country_code}`;
-                        document.getElementById('clock-status').textContent = "Global Solar Active";
-                    }
-                })
-                .catch(() => {
-                    // Fallback to time zone calculation if network server is down
-                    const offsetMinutes = new Date().getTimezoneOffset();
-                    liveLongitude = (offsetMinutes / 4) * -1;
-                    locationName = "Network Fallback Zone";
-                    document.getElementById('clock-status').textContent = "Zone Estimate Active";
-                });
-        }
-
         function updateSolarClock() {
             const now = new Date();
             
+            // 1. Get total standard UTC universal time passed today
             const utcHours = now.getUTCHours();
             const utcMinutes = now.getUTCMinutes();
             const utcSeconds = now.getUTCSeconds();
             const utcMilliseconds = now.getUTCMilliseconds();
-            
             const utcTotalSeconds = (utcHours * 3600) + (utcMinutes * 60) + utcSeconds + (utcMilliseconds / 1000);
 
-            // Dynamically updates using whichever longitude variable is loaded
-            const solarOffsetSeconds = liveLongitude * 240;
+            // 2. Extract your physical hardware timezone offset (returned in minutes)
+            const offsetMinutes = now.getTimezoneOffset();
+            
+            // Convert to a base longitude (Each 4 minutes of offset equals 1 full degree of Earth rotation)
+            const calculatedLongitude = (offsetMinutes / 4) * -1;
+
+            // 3. Compute accurate solar variance seconds
+            const solarOffsetSeconds = calculatedLongitude * 240;
             let solarTotalSeconds = utcTotalSeconds + solarOffsetSeconds;
 
+            // Maintain correct day boundaries
             if (solarTotalSeconds >= 86400) solarTotalSeconds -= 86400;
             if (solarTotalSeconds < 0) solarTotalSeconds += 86400;
 
+            // 4. Convert back to hours, minutes, and seconds
             let sHours = Math.floor(solarTotalSeconds / 3600);
             const sMinutes = Math.floor((solarTotalSeconds % 3600) / 60);
             const sSeconds = Math.floor(solarTotalSeconds % 60);
 
+            // 12-Hour conversion
             const ampm = sHours >= 12 ? 'PM' : 'AM';
             sHours = sHours % 12 || 12;
 
             const pad = (num) => String(num).padStart(2, '0');
             
+            // Render outputs directly to your interface elements
             document.getElementById('solar-time').textContent = `${pad(sHours)}:${pad(sMinutes)}:${pad(sSeconds)}`;
             document.getElementById('ampm').textContent = ampm;
-            document.getElementById('location-label').textContent = `${locationName} (${liveLongitude.toFixed(4)}°)`;
+            document.getElementById('location-label').textContent = `Tracking Longitude: ${calculatedLongitude}°`;
         }
 
-        // Fire sequence controls
-        detectGlobalLocation();
+        // Initialize and fire continuous execution sequence loops
         updateSolarClock();
         setInterval(updateSolarClock, 200);
     </script>
