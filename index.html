@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://icons8.com">
-    <title>Autonomous Solar Clock</title>
+    <title>True Border Solar Clock</title>
     <style>
         html, body {
             margin: 0; padding: 0; height: 100%; width: 100%;
@@ -17,67 +17,87 @@
             padding: 30px; border-radius: 20px;
             width: 80vw; max-width: 340px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 2px solid #a855f7;
+            border: 2px solid #00f5d4;
         }
         .time-display {
-            font-size: 11vw; font-weight: bold; color: #66fcf1;
+            font-size: 11vw; font-weight: bold; color: #00f5d4;
             font-family: monospace; margin: 10px 0; white-space: nowrap;
         }
         .status { font-size: 3.5vw; color: #2ed573; text-transform: uppercase; font-weight: bold;}
-        .geo-info { font-size: 3vw; color: #a4b0be; margin-top: 10px; }
+        .geo-info { font-size: 3.5vw; color: #a4b0be; margin-top: 10px; margin-bottom: 15px;}
+        .slider-box { background: #151a21; padding: 12px; border-radius: 10px; border: 1px solid #334155; }
+        label { display: block; font-size: 3vw; color: #64748b; margin-bottom: 5px; text-transform: uppercase;}
+        input[type=range] { width: 100%; accent-color: #00f5d4; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div class="clock-card">
-        <div class="status">Autonomous Solar Tracking</div>
-        <div class="time-display"><span id="solar-time">00:00:00</span><span id="ampm">--</span></div>
-        <div class="geo-info" id="location-label">Calculating local solar base...</div>
+        <div class="status">True Solar Absolute Time</div>
+        <div class="time-display"><span id="solar-time">12:00:00</span><span id="ampm">AM</span></div>
+        <div class="geo-info" id="coords-text">Longitude: 120.94° E</div>
+        
+        <!-- Live border crossing manual adjustment slider widget -->
+        <div class="slider-box">
+            <label id="slider-label">Travel Adjust: 0° Shift</label>
+            <input type="range" id="long-slider" min="-180" max="180" value="0" step="1" oninput="shiftLocation(this.value)">
+        </div>
     </div>
 
     <script>
+        // Solid physical anchor for your hometown base position
+        const BASE_LONGITUDE = 120.9421; 
+        let activeShift = 0;
+
+        // Retrieve previously saved travel positions from persistent browser cache memory
+        if(localStorage.getItem('solar_travel_shift')) {
+            activeShift = parseFloat(localStorage.getItem('solar_travel_shift'));
+            document.getElementById('long-slider').value = activeShift;
+        }
+
+        function shiftLocation(val) {
+            activeShift = parseFloat(val);
+            localStorage.setItem('solar_travel_shift', activeShift);
+        }
+
         function updateSolarClock() {
             const now = new Date();
             
-            // 1. Get total standard UTC universal time passed today
+            // Extract pure global master time directly from your device motherboard hardware
             const utcHours = now.getUTCHours();
             const utcMinutes = now.getUTCMinutes();
             const utcSeconds = now.getUTCSeconds();
             const utcMilliseconds = now.getUTCMilliseconds();
             const utcTotalSeconds = (utcHours * 3600) + (utcMinutes * 60) + utcSeconds + (utcMilliseconds / 1000);
 
-            // 2. Extract your physical hardware timezone offset (returned in minutes)
-            const offsetMinutes = now.getTimezoneOffset();
-            
-            // Convert to a base longitude (Each 4 minutes of offset equals 1 full degree of Earth rotation)
-            const calculatedLongitude = (offsetMinutes / 4) * -1;
+            // Compute exact current total global longitude 
+            let targetLongitude = BASE_LONGITUDE + activeShift;
+            if (targetLongitude > 180) targetLongitude -= 360;
+            if (targetLongitude < -180) targetLongitude += 360;
 
-            // 3. Compute accurate solar variance seconds
-            const solarOffsetSeconds = calculatedLongitude * 240;
+            // Strict physical calculation: The sun crosses 1 degree of Earth area every 240 seconds
+            const solarOffsetSeconds = targetLongitude * 240;
             let solarTotalSeconds = utcTotalSeconds + solarOffsetSeconds;
 
-            // Maintain correct day boundaries
             if (solarTotalSeconds >= 86400) solarTotalSeconds -= 86400;
             if (solarTotalSeconds < 0) solarTotalSeconds += 86400;
 
-            // 4. Convert back to hours, minutes, and seconds
             let sHours = Math.floor(solarTotalSeconds / 3600);
             const sMinutes = Math.floor((solarTotalSeconds % 3600) / 60);
             const sSeconds = Math.floor(solarTotalSeconds % 60);
 
-            // 12-Hour conversion
             const ampm = sHours >= 12 ? 'PM' : 'AM';
             sHours = sHours % 12 || 12;
 
             const pad = (num) => String(num).padStart(2, '0');
             
-            // Render outputs directly to your interface elements
+            // Output rendering strings to app elements
             document.getElementById('solar-time').textContent = `${pad(sHours)}:${pad(sMinutes)}:${pad(sSeconds)}`;
             document.getElementById('ampm').textContent = ampm;
-            document.getElementById('location-label').textContent = `Tracking Longitude: ${calculatedLongitude}°`;
+            document.getElementById('coords-text').textContent = `Longitude: ${targetLongitude.toFixed(2)}° ${targetLongitude >= 0 ? 'E' : 'W'}`;
+            document.getElementById('slider-label').textContent = `Travel Adjust: ${activeShift > 0 ? '+' : ''}${activeShift}° Shift`;
         }
 
-        // Initialize and fire continuous execution sequence loops
         updateSolarClock();
         setInterval(updateSolarClock, 200);
     </script>
