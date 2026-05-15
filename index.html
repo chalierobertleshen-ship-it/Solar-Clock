@@ -2,104 +2,138 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="icon" type="image/png" href="https://icons8.com">
-    <title>True Border Solar Clock</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>True Solar Position Clock</title>
     <style>
-        html, body {
-            margin: 0; padding: 0; height: 100%; width: 100%;
-            overflow: hidden; background-color: #0b0c10;
-            display: flex; justify-content: center; align-items: center;
-            font-family: system-ui, sans-serif; color: #fff;
+        body {
+            background-color: #0b0f19;
+            color: #f0f6fc;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
         }
-        .clock-card {
-            text-align: center; background: #1f2833;
-            padding: 30px; border-radius: 20px;
-            width: 80vw; max-width: 340px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 2px solid #00f5d4;
+        .clock-box {
+            background: #111827;
+            border: 2px solid #1f2937;
+            border-radius: 16px;
+            padding: 2.5rem;
+            text-align: center;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            max-width: 400px;
+            width: 100%;
         }
-        .time-display {
-            font-size: 11vw; font-weight: bold; color: #00f5d4;
-            font-family: monospace; margin: 10px 0; white-space: nowrap;
+        .title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #9ca3af;
+            margin-bottom: 0.5rem;
         }
-        .status { font-size: 3.5vw; color: #2ed573; text-transform: uppercase; font-weight: bold;}
-        .geo-info { font-size: 3.5vw; color: #a4b0be; margin-top: 10px; margin-bottom: 15px;}
-        .slider-box { background: #151a21; padding: 12px; border-radius: 10px; border: 1px solid #334155; }
-        label { display: block; font-size: 3vw; color: #64748b; margin-bottom: 5px; text-transform: uppercase;}
-        input[type=range] { width: 100%; accent-color: #00f5d4; cursor: pointer; }
+        .solar-time {
+            font-size: 3.8rem;
+            font-weight: 800;
+            color: #fbbf24; /* Solar Gold */
+            font-variant-numeric: tabular-nums;
+            margin: 0.5rem 0;
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+        }
+        .standard-time {
+            font-size: 1.1rem;
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+        }
+        .geo-data {
+            font-size: 0.85rem;
+            background: #1f2937;
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: #10b981;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
 
-    <div class="clock-card">
-        <div class="status">True Solar Absolute Time</div>
-        <div class="time-display"><span id="solar-time">12:00:00</span><span id="ampm">AM</span></div>
-        <div class="geo-info" id="coords-text">Longitude: 120.94° E</div>
+<div class="clock-box">
+    <div class="title">True Solar Time</div>
+    <div class="solar-time" id="solar-clock">00:00:00</div>
+    <div class="standard-time" id="standard-clock">Standard: --:--:--</div>
+    <div class="geo-data" id="geo-status">📡 Requesting GPS Location...</div>
+</div>
+
+<script>
+    let solarOffsetMinutes = 0; 
+    let currentLongitude = null;
+
+    // 1. Convert exact longitude into precise physical solar offset
+    function calculateSolarOffset(longitude) {
+        // The Earth rotates 360 degrees in 24 hours (1440 minutes)
+        // This means 1 degree of longitude = exactly 4 minutes of time movement!
         
-        <!-- Live border crossing manual adjustment slider widget -->
-        <div class="slider-box">
-            <label id="slider-label">Travel Adjust: 0° Shift</label>
-            <input type="range" id="long-slider" min="-180" max="180" value="0" step="1" oninput="shiftLocation(this.value)">
-        </div>
-    </div>
+        // Step A: Find the standard timezone offset of the device in hours
+        const tzOffsetHours = -(new Date().getTimezoneOffset() / 60);
+        
+        // Step B: Find the central meridian longitude for this standard timezone
+        const standardMeridian = tzOffsetHours * 15; 
+        
+        // Step C: Calculate how many degrees away from the timezone center you physically are
+        const degreeDifference = longitude - standardMeridian;
+        
+        // Step D: Total minutes to shift forward (+) or backward (-) from standard clock
+        return degreeDifference * 4; 
+    }
 
-    <script>
-        // Solid physical anchor for your hometown base position
-        const BASE_LONGITUDE = 120.9421; 
-        let activeShift = 0;
+    // 2. Safely capture the user's location coordinates without data leaks
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                currentLongitude = position.coords.longitude;
+                const latitude = position.coords.latitude;
+                
+                // Calculate the exact shift value
+                solarOffsetMinutes = calculateSolarOffset(currentLongitude);
+                
+                document.getElementById('geo-status').textContent = 
+                    `📍 Lat: ${latitude.toFixed(2)} | Lon: ${currentLongitude.toFixed(2)}`;
+            },
+            (error) => {
+                // High precision fallback if GPS is blocked: Default to perfect center of UTC+8
+                console.warn("GPS access denied. Defaulting to center meridian.");
+                solarOffsetMinutes = 0; 
+                document.getElementById('geo-status').textContent = "⚠️ Using Standard Time Center";
+                document.getElementById('geo-status').style.color = "#ef4444";
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    }
 
-        // Retrieve previously saved travel positions from persistent browser cache memory
-        if(localStorage.getItem('solar_travel_shift')) {
-            activeShift = parseFloat(localStorage.getItem('solar_travel_shift'));
-            document.getElementById('long-slider').value = activeShift;
-        }
+    // 3. Core calculation clock ticker loop (Lightweight, 0% CPU strain)
+    function tick() {
+        const now = new Date();
+        
+        // Format Standard Time for comparison
+        const stdHours = String(now.getHours()).padStart(2, '0');
+        const stdMinutes = String(now.getMinutes()).padStart(2, '0');
+        const stdSeconds = String(now.getSeconds()).padStart(2, '0');
+        document.getElementById('standard-clock').textContent = `Standard Wall Clock: ${stdHours}:${stdMinutes}:${stdSeconds}`;
 
-        function shiftLocation(val) {
-            activeShift = parseFloat(val);
-            localStorage.setItem('solar_travel_shift', activeShift);
-        }
+        // Shift standard time into true physical solar time based on your 100km concept
+        const solarDate = new Date(now.getTime() + (solarOffsetMinutes * 60000));
+        
+        const solarHours = String(solarDate.getHours()).padStart(2, '0');
+        const solarMinutesDisplay = String(solarDate.getMinutes()).padStart(2, '0');
+        const solarSecondsDisplay = String(solarDate.getSeconds()).padStart(2, '0');
+        
+        document.getElementById('solar-clock').textContent = `${solarHours}:${solarMinutesDisplay}:${solarSecondsDisplay}`;
+    }
 
-        function updateSolarClock() {
-            const now = new Date();
-            
-            // Extract pure global master time directly from your device motherboard hardware
-            const utcHours = now.getUTCHours();
-            const utcMinutes = now.getUTCMinutes();
-            const utcSeconds = now.getUTCSeconds();
-            const utcMilliseconds = now.getUTCMilliseconds();
-            const utcTotalSeconds = (utcHours * 3600) + (utcMinutes * 60) + utcSeconds + (utcMilliseconds / 1000);
+    // Initialize clock tick instantly every single second
+    setInterval(tick, 1000);
+    tick();
+</script>
 
-            // Compute exact current total global longitude 
-            let targetLongitude = BASE_LONGITUDE + activeShift;
-            if (targetLongitude > 180) targetLongitude -= 360;
-            if (targetLongitude < -180) targetLongitude += 360;
-
-            // Strict physical calculation: The sun crosses 1 degree of Earth area every 240 seconds
-            const solarOffsetSeconds = targetLongitude * 240;
-            let solarTotalSeconds = utcTotalSeconds + solarOffsetSeconds;
-
-            if (solarTotalSeconds >= 86400) solarTotalSeconds -= 86400;
-            if (solarTotalSeconds < 0) solarTotalSeconds += 86400;
-
-            let sHours = Math.floor(solarTotalSeconds / 3600);
-            const sMinutes = Math.floor((solarTotalSeconds % 3600) / 60);
-            const sSeconds = Math.floor(solarTotalSeconds % 60);
-
-            const ampm = sHours >= 12 ? 'PM' : 'AM';
-            sHours = sHours % 12 || 12;
-
-            const pad = (num) => String(num).padStart(2, '0');
-            
-            // Output rendering strings to app elements
-            document.getElementById('solar-time').textContent = `${pad(sHours)}:${pad(sMinutes)}:${pad(sSeconds)}`;
-            document.getElementById('ampm').textContent = ampm;
-            document.getElementById('coords-text').textContent = `Longitude: ${targetLongitude.toFixed(2)}° ${targetLongitude >= 0 ? 'E' : 'W'}`;
-            document.getElementById('slider-label').textContent = `Travel Adjust: ${activeShift > 0 ? '+' : ''}${activeShift}° Shift`;
-        }
-
-        updateSolarClock();
-        setInterval(updateSolarClock, 200);
-    </script>
 </body>
 </html>
