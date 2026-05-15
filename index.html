@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>True Solar Position Clock</title>
+    <title>True Solar Position Clock (AM/PM)</title>
     <style>
         body {
             background-color: #0b0f19;
@@ -22,7 +22,7 @@
             padding: 2.5rem;
             text-align: center;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-            max-width: 400px;
+            max-width: 420px;
             width: 100%;
         }
         .title {
@@ -33,12 +33,13 @@
             margin-bottom: 0.5rem;
         }
         .solar-time {
-            font-size: 3.8rem;
+            font-size: 3.4rem;
             font-weight: 800;
             color: #fbbf24; /* Solar Gold */
             font-variant-numeric: tabular-nums;
             margin: 0.5rem 0;
             text-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+            white-space: nowrap;
         }
         .standard-time {
             font-size: 1.1rem;
@@ -59,8 +60,8 @@
 
 <div class="clock-box">
     <div class="title">True Solar Time</div>
-    <div class="solar-time" id="solar-clock">00:00:00</div>
-    <div class="standard-time" id="standard-clock">Standard: --:--:--</div>
+    <div class="solar-time" id="solar-clock">12:00:00 AM</div>
+    <div class="standard-time" id="standard-clock">Standard: --:--:-- --</div>
     <div class="geo-data" id="geo-status">📡 Requesting GPS Location...</div>
 </div>
 
@@ -70,37 +71,32 @@
 
     // 1. Convert exact longitude into precise physical solar offset
     function calculateSolarOffset(longitude) {
-        // The Earth rotates 360 degrees in 24 hours (1440 minutes)
-        // This means 1 degree of longitude = exactly 4 minutes of time movement!
-        
-        // Step A: Find the standard timezone offset of the device in hours
+        // Find standard timezone offset of the device in hours
         const tzOffsetHours = -(new Date().getTimezoneOffset() / 60);
         
-        // Step B: Find the central meridian longitude for this standard timezone
+        // Find central meridian longitude for this standard timezone
         const standardMeridian = tzOffsetHours * 15; 
         
-        // Step C: Calculate how many degrees away from the timezone center you physically are
+        // Calculate degrees away from timezone center
         const degreeDifference = longitude - standardMeridian;
         
-        // Step D: Total minutes to shift forward (+) or backward (-) from standard clock
+        // 1 degree of longitude = exactly 4 minutes of true time shift
         return degreeDifference * 4; 
     }
 
-    // 2. Safely capture the user's location coordinates without data leaks
+    // 2. Capture GPS securely
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 currentLongitude = position.coords.longitude;
                 const latitude = position.coords.latitude;
                 
-                // Calculate the exact shift value
                 solarOffsetMinutes = calculateSolarOffset(currentLongitude);
                 
                 document.getElementById('geo-status').textContent = 
                     `📍 Lat: ${latitude.toFixed(2)} | Lon: ${currentLongitude.toFixed(2)}`;
             },
             (error) => {
-                // High precision fallback if GPS is blocked: Default to perfect center of UTC+8
                 console.warn("GPS access denied. Defaulting to center meridian.");
                 solarOffsetMinutes = 0; 
                 document.getElementById('geo-status').textContent = "⚠️ Using Standard Time Center";
@@ -110,27 +106,33 @@
         );
     }
 
-    // 3. Core calculation clock ticker loop (Lightweight, 0% CPU strain)
+    // Helper formatting function to force clean AM/PM rendering without engine drift
+    function formatTime12Hour(dateObj) {
+        let hours = dateObj.getHours();
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+        const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        
+        hours = hours % 12;
+        hours = hours ? hours : 12; // The hour '0' should be '12'
+        const hoursStr = String(hours).padStart(2, '0');
+        
+        return `${hoursStr}:${minutes}:${seconds} ${ampm}`;
+    }
+
+    // 3. Main isolated rendering loop
     function tick() {
         const now = new Date();
         
-        // Format Standard Time for comparison
-        const stdHours = String(now.getHours()).padStart(2, '0');
-        const stdMinutes = String(now.getMinutes()).padStart(2, '0');
-        const stdSeconds = String(now.getSeconds()).padStart(2, '0');
-        document.getElementById('standard-clock').textContent = `Standard Wall Clock: ${stdHours}:${stdMinutes}:${stdSeconds}`;
+        // Display Standard Wall Clock in AM/PM
+        document.getElementById('standard-clock').textContent = `Standard Wall Clock: ${formatTime12Hour(now)}`;
 
-        // Shift standard time into true physical solar time based on your 100km concept
+        // Calculate and shift standard time into true solar AM/PM time
         const solarDate = new Date(now.getTime() + (solarOffsetMinutes * 60000));
-        
-        const solarHours = String(solarDate.getHours()).padStart(2, '0');
-        const solarMinutesDisplay = String(solarDate.getMinutes()).padStart(2, '0');
-        const solarSecondsDisplay = String(solarDate.getSeconds()).padStart(2, '0');
-        
-        document.getElementById('solar-clock').textContent = `${solarHours}:${solarMinutesDisplay}:${solarSecondsDisplay}`;
+        document.getElementById('solar-clock').textContent = formatTime12Hour(solarDate);
     }
 
-    // Initialize clock tick instantly every single second
+    // Run interval cleanly
     setInterval(tick, 1000);
     tick();
 </script>
