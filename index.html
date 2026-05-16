@@ -60,17 +60,6 @@
         const cv = document.getElementById('canvas'), ctx = cv.getContext('2d');
         const scv = document.getElementById('stars'), sctx = scv.getContext('2d');
         
-        // Native Political Timezone Exception Map (Overrides raw 15-degree math alignment bugs)
-        const tzOverrides = { "Asia/Manila": 120, "Asia/Shanghai": 120, "Asia/Singapore": 120, "Europe/London": 0, "Europe/Paris": 15, "Asia/Kolkata": 82.5 };
-
-        function getTrueLSTM() {
-            try {
-                const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                if (tzOverrides[tz] !== undefined) return tzOverrides[tz];
-            } catch(e) {}
-            return (-new Date().getTimezoneOffset() / 60) * 15;
-        }
-
         function resizeCanvases() {
             const dpr = window.devicePixelRatio || 1;
             cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; ctx.scale(dpr, dpr);
@@ -110,12 +99,15 @@
         function updateClock() {
             if (!isVisible) return;
             const now = new Date(), eotMins = getEoT(now), localLong = cfg.lng, timezoneOffsetHrs = -now.getTimezoneOffset() / 60;
-            const lstam = getTrueLSTM();
+            
+            // Hardcoded native meridian fix for the Philippines (UTC+8 keeps its true 120° reference)
+            const lstam = (timezoneOffsetHrs === 8) ? 120 : (timezoneOffsetHrs * 15);
+            
             const longCorrMins = 4 * (localLong - lstam), totalDriftMins = eotMins + longCorrMins;
             const solarNow = new Date(now.getTime() + totalDriftMins * 60000);
             
-            document.getElementById('solar-time').innerText = solarNow.toTimeString().split(' ');
-            document.getElementById('std-time').innerText = `Standard: ${now.toTimeString().split(' ')} (UTC${timezoneOffsetHrs >= 0 ? '+' : ''}${timezoneOffsetHrs})`;
+            document.getElementById('solar-time').innerText = solarNow.toTimeString().split(' ')[0];
+            document.getElementById('std-time').innerText = `Standard: ${now.toTimeString().split(' ')[0]} (UTC${timezoneOffsetHrs >= 0 ? '+' : ''}${timezoneOffsetHrs})`;
             
             const totSecs = Math.abs(Math.round(totalDriftMins * 60));
             document.getElementById('d-hrs').innerText = String(Math.floor(totSecs / 3600)).padStart(2,'0');
