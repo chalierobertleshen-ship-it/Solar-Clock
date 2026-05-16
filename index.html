@@ -1,9 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Precision Starfield Solar Clock</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Precision Starfield Solar Clock</title>
     <style>
         :root { --bg-gradient: linear-gradient(135deg, #020617 0%, #0b1329 100%); --accent-color: #a78bfa; --glow-color: rgba(167, 139, 250, 0.2); }
         body { background: var(--bg-gradient); color: #f0f6fc; font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; position: relative; will-change: background; transition: background 1.5s ease-in-out; }
@@ -46,78 +44,42 @@
 <body>
 <div class="starfield" id="stars"></div>
 <div class="clock-box">
-    <button class="settings-toggle" id="open-settings" aria-label="Open Astro Settings">⚙️</button>
-    <div class="title">True Solar Time</div>
-    <div class="phase-indicator" id="sky-phase">Initializing...</div>
-    <div class="solar-chart-container"><canvas id="solar-canvas"></canvas></div>
-    <div class="solar-time" id="solar-clock">12:00:00 AM</div>
-    <div class="meta-container">
-        <span class="standard-time" id="standard-clock">Std: --:--:-- --</span>
-        <span class="drift-badge" id="drift-clock">0.0m diff</span>
-    </div>
-    <div class="geo-data" id="geo-status">Awaiting GPS...</div>
+    <button class="settings-toggle" id="open-settings" aria-label="Open Astro Settings">⚙️</button><div class="title">True Solar Time</div><div class="phase-indicator" id="sky-phase">Initializing...</div>
+    <div class="solar-chart-container"><canvas id="solar-canvas"></canvas></div><div class="solar-time" id="solar-clock">12:00:00 AM</div>
+    <div class="meta-container"><span class="standard-time" id="standard-clock">Std: --:--:-- --</span><span class="drift-badge" id="drift-clock">0.0m diff</span></div><div class="geo-data" id="geo-status">📡 Awaiting GPS...</div>
 </div>
-<div class="drawer-overlay" id="overlay">
-    <div class="settings-drawer" id="drawer">
-        <h3 class="drawer-title">Astro Parameters</h3>
-        <div class="control-group">
-            <div class="control-label"><span>GPS Auto-Tracking</span><label class="switch"><input type="checkbox" id="gps-toggle" checked><span class="slider"></span></label></div>
-        </div>
-        <div class="control-group"><label class="control-label" for="input-lat">Manual Latitude</label><input type="number" step="0.0001" id="input-lat" class="astro-input" value="0.0000" disabled></div>
-        <div class="control-group"><label class="control-label" for="input-lon">Manual Longitude</label><input type="number" step="0.0001" id="input-lon" class="astro-input" value="0.0000" disabled></div>
-        <button class="close-drawer" id="close-settings">Apply Matrix</button>
-    </div>
-</div>
+<div class="drawer-overlay" id="overlay"><div class="settings-drawer" id="drawer"><h3 class="drawer-title">Astro Parameters</h3><div class="control-group"><div class="control-label"><span>GPS Auto-Tracking</span><label class="switch"><input type="checkbox" id="gps-toggle" checked><span class="slider"></span></label></div></div><div class="control-group"><label class="control-label" for="input-lat">Manual Latitude</label><input type="number" step="0.0001" id="input-lat" class="astro-input" value="0.0000" disabled></div><div class="control-group"><label class="control-label" for="input-lon">Manual Longitude</label><input type="number" step="0.0001" id="input-lon" class="astro-input" value="0.0000" disabled></div><button class="close-drawer" id="close-settings">Apply Matrix</button></div></div>
 <script>
     let currentLongitude = 0, currentLatitude = 0, isAutoGPS = true, timerId = null, resizeTimeout = null, globalAccentColor = '#a78bfa';
-    function initCanvas() { const canvas = document.getElementById('solar-canvas'); const rect = canvas.parentElement.getBoundingClientRect(); canvas.width = rect.width * window.devicePixelRatio; canvas.height = rect.height * window.devicePixelRatio; canvas.style.width = `${rect.width}px`; canvas.style.height = `${rect.height}px`; tick(); }
-    function getEquationOfTimeMinutes(date) { const b = (360 / 365) * (Math.floor((date - new Date(date.getFullYear(), 0, 1)) / 86400000) + 1 - 81) * (Math.PI / 180); return 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b); }
-    function calculateTotalSolarOffset(longitude, date) { return (longitude - (-(date.getTimezoneOffset() / 60) * 15)) * 4 + getEquationOfTimeMinutes(date); }
-    function drawSolarArc(timeDecimal) {
-        const canvas = document.getElementById('solar-canvas'); if (!canvas) return; const ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height, dpr = window.devicePixelRatio;
-        ctx.clearRect(0, 0, w, h); ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; ctx.lineWidth = dpr; ctx.beginPath(); ctx.moveTo(0, h * 0.7); ctx.lineTo(w, h * 0.7); ctx.stroke();
-        ctx.beginPath(); ctx.strokeStyle = globalAccentColor; ctx.lineWidth = 2 * dpr;
+    function initCanvas() { const c = document.getElementById('solar-canvas'); if (!c) return; const r = c.parentElement.getBoundingClientRect(); c.width = r.width * window.devicePixelRatio; c.height = r.height * window.devicePixelRatio; c.style.width = `${r.width}px`; c.style.height = `${r.height}px`; tick(); }
+    function getEquationOfTimeMinutes(d) { const b = (360 / 365) * (Math.floor((d - new Date(d.getFullYear(), 0, 1)) / 86400000) + 1 - 81) * (Math.PI / 180); return 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b); }
+    function calculateTotalSolarOffset(lon, d) { if (isNaN(lon) || !isFinite(lon)) lon = 0; return (lon - (-(d.getTimezoneOffset() / 60) * 15)) * 4 + getEquationOfTimeMinutes(d); }
+    function drawSolarArc(t) {
+        const c = document.getElementById('solar-canvas'); if (!c) return; const ctx = c.getContext('2d'), w = c.width, h = c.height, dpr = window.devicePixelRatio; ctx.clearRect(0, 0, w, h); ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; ctx.lineWidth = dpr; ctx.beginPath(); ctx.moveTo(0, h * 0.7); ctx.lineTo(w, h * 0.7); ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = globalAccentColor; ctx.lineWidth = 2 * dpr;
         for (let x = 0; x <= w; x++) { const y = (h * 0.5) + Math.sin(((x / w * 24) - 6) * Math.PI / 12) * (h * 0.4); if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
-        ctx.stroke(); const sunX = (timeDecimal / 24) * w, sunY = (h * 0.5) + Math.sin((timeDecimal - 6) * Math.PI / 12) * (h * 0.4);
-        ctx.shadowBlur = 15 * dpr; ctx.shadowColor = globalAccentColor; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(sunX, sunY, 5 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+        ctx.stroke(); const sX = (t / 24) * w, sY = (h * 0.5) + Math.sin((t - 6) * Math.PI / 12) * (h * 0.4); ctx.shadowBlur = 15 * dpr; ctx.shadowColor = globalAccentColor; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(sX, sY, 5 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
     }
-    function syncLocationDOM() {
-        document.getElementById('geo-status').textContent = isAutoGPS ? `📍 Lat: ${currentLatitude.toFixed(2)} | Lon: ${currentLongitude.toFixed(2)}` : `🛠️ Matrix: Lat ${currentLatitude.toFixed(2)} | Lon ${currentLongitude.toFixed(2)}`;
-        document.getElementById('geo-status').style.color = isAutoGPS ? "#10b981" : "#38bdf8"; tick();
-    }
+    function syncLocationDOM() { document.getElementById('geo-status').textContent = isAutoGPS ? `📍 Lat: ${currentLatitude.toFixed(2)} | Lon: ${currentLongitude.toFixed(2)}` : `🛠️ Matrix: Lat ${currentLatitude.toFixed(2)} | Lon ${currentLongitude.toFixed(2)}`; document.getElementById('geo-status').style.color = isAutoGPS ? "#10b981" : "#38bdf8"; tick(); }
     function initializeTimezoneFallback() { currentLongitude = -(new Date().getTimezoneOffset() / 60) * 15; currentLatitude = 0; document.getElementById('input-lat').value = currentLatitude.toFixed(4); document.getElementById('input-lon').value = currentLongitude.toFixed(4); document.getElementById('geo-status').textContent = "📡 Syncing Indoor Matrix..."; tick(); }
-    function requestGPSLocation() {
-        if (!isAutoGPS || !navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition((position) => { if(!isAutoGPS) return; currentLongitude = position.coords.longitude; currentLatitude = position.coords.latitude; document.getElementById('input-lat').value = currentLatitude.toFixed(4); document.getElementById('input-lon').value = currentLongitude.toFixed(4); syncLocationDOM(); }, () => { if(!isAutoGPS) return; currentLongitude = -(new Date().getTimezoneOffset() / 60) * 15; document.getElementById('geo-status').textContent = "⚠️ Center Meridian Mode"; document.getElementById('geo-status').style.color = "#ef4444"; tick(); }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 });
+    function requestGPSLocation() { if (!isAutoGPS || !navigator.geolocation) return; navigator.geolocation.getCurrentPosition((p) => { if(!isAutoGPS) return; currentLongitude = p.coords.longitude; currentLatitude = p.coords.latitude; document.getElementById('input-lat').value = currentLatitude.toFixed(4); document.getElementById('input-lon').value = currentLongitude.toFixed(4); syncLocationDOM(); }, () => { if(!isAutoGPS) return; currentLongitude = -(new Date().getTimezoneOffset() / 60) * 15; document.getElementById('geo-status').textContent = "⚠️ Center Meridian Mode"; document.getElementById('geo-status').style.color = "#ef4444"; tick(); }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }); }
+    function formatTime12Hour(d) { let h = d.getHours(); const ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return { string: `${String(h).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')} ${ampm}`, rawHours: d.getHours(), rawMinutes: d.getMinutes() }; }
+    function formatDriftDuration(m) { const s = Math.round(Math.abs(m) * 60), hrs = Math.floor(s / 3600), mins = Math.floor((s % 3600) / 60), sec = s % 60; let r = m >= 0 ? '+' : '-'; if (hrs > 0) r += `${hrs}h `; if (mins > 0 || hrs > 0) r += `${mins}m `; return r + `${sec}s`; }
+    function updateAtmosphere(s) {
+        const root = document.documentElement, pI = document.getElementById('sky-phase'), sL = document.getElementById('stars'), tD = s.rawHours + (s.rawMinutes / 60); let bg, acc, glw, txt, stars = false;
+        if (tD >= 5 && tD < 8) { bg = 'linear-gradient(135deg, #2e1065 0%, #701a75 50%, #f59e0b 100%)'; acc = '#f59e0b'; glw = 'rgba(245, 158, 11, 0.4)'; txt = '🌅 Sunrise Matrix'; }
+        else if (tD >= 8 && tD < 17) { bg = 'linear-gradient(135deg, #0284c7 0%, #0369a1 60%, #0f172a 100%)'; acc = '#38bdf8'; glw = 'rgba(56, 189, 248, 0.4)'; txt = '☀️ High Bright Blue Sky'; }
+        else if (tD >= 17 && tD < 20) { bg = 'linear-gradient(135deg, #1e1b4b 0%, #991b1b 50%, #f43f5e 100%)'; acc = '#f43f5e'; glw = 'rgba(244, 63, 94, 0.4)'; txt = '🌇 Deep Crimson Sunset'; }
+        else { bg = 'linear-gradient(135deg, #020617 0%, #0b1329 100%)'; acc = '#a78bfa'; glw = 'rgba(167, 139, 250, 0.2)'; txt = '🌌 Absolute Deep Midnight'; stars = true; }
+        if (root.style.getPropertyValue('--accent-color') !== acc) { globalAccentColor = acc; root.style.setProperty('--bg-gradient', bg); root.style.setProperty('--accent-color', acc); root.style.setProperty('--glow-color', glw); pI.textContent = txt; }
+        sL.style.opacity = stars ? "1" : "0"; drawSolarArc(tD);
     }
-    function formatTime12Hour(dateObj) { let hours = dateObj.getHours(); const ampm = hours >= 12 ? 'PM' : 'AM'; hours = hours % 12 || 12; return { string: `${String(hours).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}:${String(dateObj.getSeconds()).padStart(2, '0')} ${ampm}`, ampm: ampm, rawHours: dateObj.getHours(), rawMinutes: dateObj.getMinutes() }; }
-    function updateAtmosphere(solarInfo) {
-        const root = document.documentElement, phaseIndicator = document.getElementById('sky-phase'), starLayer = document.getElementById('stars'), timeDecimal = solarInfo.rawHours + (solarInfo.rawMinutes / 60);
-        let bg, accent, glow, phaseText, showStars = false;
-        if (timeDecimal >= 5 && timeDecimal < 8) { bg = 'linear-gradient(135deg, #2e1065 0%, #701a75 50%, #f59e0b 100%)'; accent = '#f59e0b'; glow = 'rgba(245, 158, 11, 0.4)'; phaseText = '🌅 Sunrise Matrix'; }
-        else if (timeDecimal >= 8 && timeDecimal < 17) { bg = 'linear-gradient(135deg, #0284c7 0%, #0369a1 60%, #0f172a 100%)'; accent = '#38bdf8'; glow = 'rgba(56, 189, 248, 0.4)'; phaseText = '☀️ High Bright Blue Sky'; }
-        else if (timeDecimal >= 17 && timeDecimal < 20) { bg = 'linear-gradient(135deg, #1e1b4b 0%, #991b1b 50%, #f43f5e 100%)'; accent = '#f43f5e'; glow = 'rgba(244, 63, 94, 0.4)'; phaseText = '🌇 Deep Crimson Sunset'; }
-        else { bg = 'linear-gradient(135deg, #020617 0%, #0b1329 100%)'; accent = '#a78bfa'; glow = 'rgba(167, 139, 250, 0.2)'; phaseText = '🌌 Absolute Deep Midnight'; showStars = true; }
-        if (root.style.getPropertyValue('--accent-color') !== accent) { globalAccentColor = accent; root.style.setProperty('--bg-gradient', bg); root.style.setProperty('--accent-color', accent); root.style.setProperty('--glow-color', glow); phaseIndicator.textContent = phaseText; }
-        starLayer.style.opacity = showStars ? "1" : "0"; drawSolarArc(timeDecimal);
-    }
-    function tick() {
-        const now = new Date(); document.getElementById('standard-clock').textContent = `Std: ${formatTime12Hour(now).string}`; const totalOffsetMinutes = calculateTotalSolarOffset(currentLongitude, now);
-        const driftBadge = document.getElementById('drift-clock'), absDiff = Math.abs(totalOffsetMinutes).toFixed(1); driftBadge.textContent = `${totalOffsetMinutes >= 0 ? '+' : '-'}${absDiff}m from wall clock`;
-        driftBadge.className = `drift-badge ${totalOffsetMinutes >= 0 ? 'drift-ahead' : 'drift-behind'}`; const solarInfo = formatTime12Hour(new Date(now.getTime() + (totalOffsetMinutes * 60000)));
-        document.getElementById('solar-clock').textContent = solarInfo.string; updateAtmosphere(solarInfo);
-    }
+    function tick() { const n = new Date(); document.getElementById('standard-clock').textContent = `Std: ${formatTime12Hour(n).string}`; const o = calculateTotalSolarOffset(currentLongitude, n); const dB = document.getElementById('drift-clock'); dB.textContent = `${formatDriftDuration(o)} from wall clock`; dB.className = `drift-badge ${o >= 0 ? 'drift-ahead' : 'drift-behind'}`; const sI = formatTime12Hour(new Date(n.getTime() + (o * 60000))); document.getElementById('solar-clock').textContent = sI.string; updateAtmosphere(sI); }
     const overlay = document.getElementById('overlay'), gpsToggle = document.getElementById('gps-toggle'), latInput = document.getElementById('input-lat'), lonInput = document.getElementById('input-lon');
-    document.getElementById('open-settings').addEventListener('click', () => overlay.classList.add('open'));
-    document.getElementById('close-settings').addEventListener('click', () => overlay.classList.remove('open'));
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
-    gpsToggle.addEventListener('change', (e) => { isAutoGPS = e.target.checked; latInput.disabled = isAutoGPS; lonInput.disabled = isAutoGPS; if (isAutoGPS) requestGPSLocation(); else { currentLatitude = parseFloat(latInput.value) || 0; currentLongitude = parseFloat(lonInput.value) || 0; syncLocationDOM(); } });
-    const handleManualCoordinates = () => { if (!isAutoGPS) { currentLatitude = parseFloat(latInput.value) || 0; currentLongitude = parseFloat(lonInput.value) || 0; syncLocationDOM(); } };
-    latInput.addEventListener('input', handleManualCoordinates); lonInput.addEventListener('input', handleManualCoordinates);
-    window.addEventListener('resize', () => { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(initCanvas, 150); });
+    document.getElementById('open-settings').addEventListener('click', () => overlay.classList.add('open')); document.getElementById('close-settings').addEventListener('click', () => overlay.classList.remove('open')); overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
+    gpsToggle.addEventListener('change', (e) => { isAutoGPS = e.target.checked; latInput.disabled = isAutoGPS; lonInput.disabled = isAutoGPS; if (isAutoGPS) requestGPSLocation(); else handleManualCoordinates(); });
+    const handleManualCoordinates = () => { if (isAutoGPS) return; let lat = parseFloat(latInput.value), lon = parseFloat(lonInput.value); if (isNaN(lat)) lat = 0; if (isNaN(lon)) lon = 0; if (lat > 90) lat = 90; if (lat < -90) lat = -90; if (lon > 180) lon = 180; if (lon < -180) lon = -180; if (parseFloat(latInput.value) !== lat) latInput.value = lat.toFixed(4); if (parseFloat(lonInput.value) !== lon) lonInput.value = lon.toFixed(4); currentLatitude = lat; currentLongitude = lon; syncLocationDOM(); };
+    latInput.addEventListener('input', handleManualCoordinates); lonInput.addEventListener('input', handleManualCoordinates); window.addEventListener('resize', () => { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(initCanvas, 150); });
     function startEngine() { if (!timerId) { tick(); timerId = setInterval(tick, 1000); } }
-    function stopEngine() { if (timerId) { clearInterval(timerId); timerId = null; } }
-    document.addEventListener('visibilitychange', () => { if (document.hidden) stopEngine(); else startEngine(); });
     window.addEventListener('load', () => { initCanvas(); initializeTimezoneFallback(); requestGPSLocation(); startEngine(); });
 </script>
 </body>
