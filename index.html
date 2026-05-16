@@ -61,6 +61,13 @@
         const scv = document.getElementById('stars'), sctx = scv.getContext('2d');
         let lastTheme = '', lastPhase = '', lastAccent = '';
 
+        // --- TIME ACCELERATION CONFIGURATION ---
+        // Change 1 to 60 to make time move 60x faster (1 real second = 1 simulation minute)
+        // Change 1 to 3600 to make time move 3600x faster (1 real second = 1 simulation hour)
+        const timeMultiplier = 1; 
+        let simulationOffsetMs = 0;
+        let lastRealTimeMs = Date.now();
+
         function resizeCanvases() {
             const dpr = window.devicePixelRatio || 1;
             cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; ctx.scale(dpr, dpr);
@@ -103,7 +110,15 @@
         }
         function updateClock() {
             if (!isVisible) return;
-            const now = new Date(), eotMins = getEoT(now), localLong = cfg.lng, timezoneOffsetHrs = -now.getTimezoneOffset() / 60;
+            
+            // Calculate accelerated time baseline
+            const currentRealTimeMs = Date.now();
+            const deltaRealMs = currentRealTimeMs - lastRealTimeMs;
+            lastRealTimeMs = currentRealTimeMs;
+            simulationOffsetMs += deltaRealMs * (timeMultiplier - 1);
+            
+            const now = new Date(currentRealTimeMs + simulationOffsetMs);
+            const eotMins = getEoT(now), localLong = cfg.lng, timezoneOffsetHrs = -now.getTimezoneOffset() / 60;
             const lstam = (timezoneOffsetHrs === 8) ? 120 : (timezoneOffsetHrs * 15);
             const longCorrMins = 4 * (localLong - lstam), totalDriftMins = eotMins + longCorrMins;
             const solarNow = new Date(now.getTime() + totalDriftMins * 60000);
@@ -164,7 +179,7 @@
         }
         
         function startThreads() {
-            if (!clockId) clockId = setInterval(updateClock, 1000);
+            if (!clockId) clockId = setInterval(updateClock, 100);
             if (!starId) starId = setInterval(drawStars, 4000);
         }
         function stopThreads() {
@@ -173,7 +188,7 @@
 
         document.addEventListener('visibilitychange', () => { 
             isVisible = !document.hidden; 
-            if (isVisible) { updateClock(); startThreads(); } else { stopThreads(); } 
+            if (isVisible) { lastRealTimeMs = Date.now(); updateClock(); startThreads(); } else { stopThreads(); } 
         });
         window.addEventListener('resize', resizeCanvases);
         window.onload = () => { resizeCanvases(); if(cfg.mode === 'auto') initGPS(); updateClock(); startThreads(); };
