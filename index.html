@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic 4-Phase Solar Clock</title>
+    <title>Precision Starfield Solar Clock</title>
     <style>
         :root {
-            /* Smoothly transitioned variables */
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #020617 100%);
-            --accent-color: #fbbf24;
-            --glow-color: rgba(251, 191, 36, 0.2);
-            --phase-label: "Initializing";
+            --bg-gradient: linear-gradient(135deg, #020617 0%, #0b1329 100%);
+            --accent-color: #a78bfa;
+            --glow-color: rgba(167, 139, 250, 0.2);
         }
         
         body {
@@ -22,12 +20,41 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            overflow: hidden;
+            position: relative;
             transition: background 1.5s ease-in-out;
         }
+
+        /* Pure CSS Performance-Optimized Star Layer */
+        .starfield {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+            background-image: 
+                radial-gradient(1px 1px at 25px 35px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 60px 120px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 150px 40px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 200px 180px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 280px 90px, #fff, rgba(0,0,0,0));
+            background-size: 300px 300px;
+            animation: twinkle 4s infinite ease-in-out alternate;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.2; transform: scale(0.98); }
+            50% { opacity: 0.7; }
+            100% { opacity: 0.4; transform: scale(1.02); }
+        }
+
         .clock-box {
-            background: rgba(10, 15, 30, 0.75);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: rgba(10, 15, 30, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 24px;
             padding: 3rem;
@@ -35,6 +62,7 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
             max-width: 460px;
             width: 100%;
+            z-index: 10;
         }
         .title {
             font-size: 0.85rem;
@@ -50,7 +78,7 @@
             letter-spacing: 1px;
             color: var(--accent-color);
             margin-bottom: 1rem;
-            opacity: 0.9;
+            transition: color 1.5s ease;
         }
         .solar-time {
             font-size: 3.5rem;
@@ -71,23 +99,15 @@
             margin-bottom: 1.5rem;
             font-size: 0.95rem;
         }
-        .standard-time {
-            color: #9ca3af;
-        }
+        .standard-time { color: #9ca3af; }
         .drift-badge {
             padding: 4px 10px;
             border-radius: 6px;
             font-weight: 600;
             font-size: 0.85rem;
         }
-        .drift-ahead {
-            color: #34d399;
-            background: rgba(52, 211, 153, 0.1);
-        }
-        .drift-behind {
-            color: #f87171;
-            background: rgba(248, 113, 113, 0.1);
-        }
+        .drift-ahead { color: #34d399; background: rgba(52, 211, 153, 0.1); }
+        .drift-behind { color: #f87171; background: rgba(248, 113, 113, 0.1); }
         .geo-data {
             font-size: 0.85rem;
             background: rgba(255, 255, 255, 0.03);
@@ -95,15 +115,16 @@
             padding: 8px 16px;
             border-radius: 20px;
             color: #10b981;
-            display: inline-block;
         }
     </style>
 </head>
 <body>
 
+<div class="starfield" id="stars"></div>
+
 <div class="clock-box">
     <div class="title">True Solar Time</div>
-    <div class="phase-indicator" id="sky-phase">☀️ Loading Phase...</div>
+    <div class="phase-indicator" id="sky-phase">Initializing...</div>
     <div class="solar-time" id="solar-clock">12:00:00 AM</div>
     
     <div class="meta-container">
@@ -111,42 +132,33 @@
         <span class="drift-badge" id="drift-clock">0.0m diff</span>
     </div>
     
-    <div class="geo-data" id="geo-status">📡 Requesting GPS Location...</div>
+    <div class="geo-data" id="geo-status">📡 Awaiting GPS...</div>
 </div>
 
 <script>
     let solarOffsetMinutes = 0; 
 
+    // Isolated math engine - zero network calls
     function calculateSolarOffset(longitude) {
         const tzOffsetHours = -(new Date().getTimezoneOffset() / 60);
-        const standardMeridian = tzOffsetHours * 15; 
-        const degreeDifference = longitude - standardMeridian;
-        return degreeDifference * 4; 
+        return (longitude - (tzOffsetHours * 15)) * 4; 
     }
 
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const lon = position.coords.longitude;
-                const lat = position.coords.latitude;
                 solarOffsetMinutes = calculateSolarOffset(lon);
                 
-                document.getElementById('geo-status').textContent = 
-                    `📍 Lat: ${lat.toFixed(2)} | Lon: ${lon.toFixed(2)}`;
+                document.getElementById('geo-status').textContent = `📍 Lat: ${position.coords.latitude.toFixed(2)} | Lon: ${lon.toFixed(2)}`;
                 
                 const driftBadge = document.getElementById('drift-clock');
                 const absDiff = Math.abs(solarOffsetMinutes).toFixed(1);
-                if (solarOffsetMinutes >= 0) {
-                    driftBadge.textContent = `+${absDiff}m ahead of wall clock`;
-                    driftBadge.className = "drift-badge drift-ahead";
-                } else {
-                    driftBadge.textContent = `-${absDiff}m behind wall clock`;
-                    driftBadge.className = "drift-badge drift-behind";
-                }
+                driftBadge.textContent = `${solarOffsetMinutes >= 0 ? '+' : '-'}${absDiff}m from wall clock`;
+                driftBadge.className = `drift-badge ${solarOffsetMinutes >= 0 ? 'drift-ahead' : 'drift-behind'}`;
             },
-            (error) => {
-                solarOffsetMinutes = 0; 
-                document.getElementById('geo-status').textContent = "⚠️ Using Standard Time Center";
+            () => {
+                document.getElementById('geo-status').textContent = "⚠️ Center Meridian Mode";
                 document.getElementById('geo-status').style.color = "#ef4444";
             },
             { enableHighAccuracy: true, timeout: 10000 }
@@ -155,14 +167,10 @@
 
     function formatTime12Hour(dateObj) {
         let hours = dateObj.getHours();
-        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-        const seconds = String(dateObj.getSeconds()).padStart(2, '0');
         const ampm = hours >= 12 ? 'PM' : 'AM';
-        
-        hours = hours % 12;
-        hours = hours ? hours : 12;
+        hours = hours % 12 || 12;
         return {
-            string: `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`,
+            string: `${String(hours).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}:${String(dateObj.getSeconds()).padStart(2, '0')} ${ampm}`,
             ampm: ampm,
             rawHours: dateObj.getHours(),
             rawMinutes: dateObj.getMinutes()
@@ -172,58 +180,46 @@
     function updateAtmosphere(solarInfo) {
         const root = document.documentElement;
         const phaseIndicator = document.getElementById('sky-phase');
-        
-        // Convert hours + minutes to a decimal total time format (e.g., 18:30 = 18.5)
+        const starLayer = document.getElementById('stars');
         const timeDecimal = solarInfo.rawHours + (solarInfo.rawMinutes / 60);
         
-        let bg, accent, glow, phaseText;
+        let bg, accent, glow, phaseText, showStars = false;
 
-        // 🌅 PHASE 1: Sunrise / Dawn (5:00 AM to 8:00 AM)
-        if (timeDecimal >= 5 && timeDecimal < 8) {
-            bg = 'linear-gradient(135deg, #2e1065 0%, #701a75 50%, #f59e0b 100%)'; // Deep Purple to Amber Gold
-            accent = '#f59e0b'; // Warm Dawn Gold
+        if (timeDecimal >= 5 && timeDecimal < 8) { // Sunrise
+            bg = 'linear-gradient(135deg, #2e1065 0%, #701a75 50%, #f59e0b 100%)';
+            accent = '#f59e0b';
             glow = 'rgba(245, 158, 11, 0.4)';
             phaseText = '🌅 Sunrise Matrix';
-        }
-        // ☀️ PHASE 2: Bright Daylight Blue (8:00 AM to 5:00 PM / 17:00)
-        else if (timeDecimal >= 8 && timeDecimal < 17) {
-            bg = 'linear-gradient(135deg, #0284c7 0%, #0369a1 60%, #0f172a 100%)'; // Clear Sky Blue to Deep Base
-            accent = '#38bdf8'; // Electric Sky Blue
+        } else if (timeDecimal >= 8 && timeDecimal < 17) { // Daylight Blue
+            bg = 'linear-gradient(135deg, #0284c7 0%, #0369a1 60%, #0f172a 100%)';
+            accent = '#38bdf8';
             glow = 'rgba(56, 189, 248, 0.4)';
             phaseText = '☀️ High Bright Blue Sky';
-        }
-        // 🌇 PHASE 3: Sunset / Golden Hour (5:00 PM to 8:00 PM / 17:00 to 20:00)
-        else if (timeDecimal >= 17 && timeDecimal < 20) {
-            bg = 'linear-gradient(135deg, #1e1b4b 0%, #991b1b 50%, #f43f5e 100%)'; // Midnight Blue to Crimson Sunset
-            accent = '#f43f5e'; // Crimson Sunset Red
+        } else if (timeDecimal >= 17 && timeDecimal < 20) { // Sunset
+            bg = 'linear-gradient(135deg, #1e1b4b 0%, #991b1b 50%, #f43f5e 100%)';
+            accent = '#f43f5e';
             glow = 'rgba(244, 63, 94, 0.4)';
             phaseText = '🌇 Deep Crimson Sunset';
-        }
-        // 🌌 PHASE 4: Deep Absolute Midnight (8:00 PM to 5:00 AM)
-        else {
-            bg = 'linear-gradient(135deg, #020617 0%, #0b1329 100%)'; // Pure Cosmic Pitch Black / Deep Navy
-            accent = '#a78bfa'; // Cosmic Nebula Purple
+        } else { // Midnight
+            bg = 'linear-gradient(135deg, #020617 0%, #0b1329 100%)';
+            accent = '#a78bfa';
             glow = 'rgba(167, 139, 250, 0.2)';
             phaseText = '🌌 Absolute Deep Midnight';
+            showStars = true;
         }
 
-        // Inject the styles smoothly into the CSS root variables
         root.style.setProperty('--bg-gradient', bg);
         root.style.setProperty('--accent-color', accent);
         root.style.setProperty('--glow-color', glow);
         phaseIndicator.textContent = phaseText;
+        starLayer.style.opacity = showStars ? "1" : "0";
     }
 
     function tick() {
         const now = new Date();
         document.getElementById('standard-clock').textContent = `Std: ${formatTime12Hour(now).string}`;
-
-        const solarDate = new Date(now.getTime() + (solarOffsetMinutes * 60000));
-        const solarInfo = formatTime12Hour(solarDate);
-        
+        const solarInfo = formatTime12Hour(new Date(now.getTime() + (solarOffsetMinutes * 60000)));
         document.getElementById('solar-clock').textContent = solarInfo.string;
-        
-        // Pass the solar values to determine the background engine status
         updateAtmosphere(solarInfo);
     }
 
