@@ -56,7 +56,7 @@
     </div>
     <script>
         let cfg = JSON.parse(localStorage.getItem('solar_cfg')) || { mode: 'auto', lat: 14.41, lng: 120.99 };
-        let animId, starId, isVisible = true;
+        let clockId, starId, isVisible = true;
         const cv = document.getElementById('canvas'), ctx = cv.getContext('2d');
         const scv = document.getElementById('stars'), sctx = scv.getContext('2d');
         let lastTheme = '', lastPhase = '', lastAccent = '';
@@ -65,7 +65,7 @@
             const dpr = window.devicePixelRatio || 1;
             cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; ctx.scale(dpr, dpr);
             scv.width = window.innerWidth * dpr; scv.height = window.innerHeight * dpr; sctx.scale(dpr, dpr);
-            drawStars();
+            drawStars(); if(!isVisible) updateClock();
         }
         function togglePanel(open) { 
             document.getElementById('panel').classList.toggle('open', open);
@@ -111,7 +111,7 @@
             document.getElementById('solar-time').innerText = formatAMPM(solarNow);
             document.getElementById('geo-coords').innerText = `${cfg.lat.toFixed(2)} | ${cfg.lng.toFixed(2)}`;
             
-            let stdStr = now.toTimeString().split(' ')[0];
+            let stdStr = now.toTimeString().split(' ');
             let diffSecs = Math.round(totalDriftMins * 60);
             let diffSign = diffSecs >= 0 ? '+' : '-'; diffSecs = Math.abs(diffSecs);
             let m = Math.floor(diffSecs / 60), s = diffSecs % 60;
@@ -161,11 +161,22 @@
             let sunX = (sHrs / 24) * w, sunY = (h / 2) - Math.sin(sunAngle) * (h / 2 - 8);
             ctx.shadowBlur = 10; ctx.shadowColor = accent; ctx.fillStyle = accent;
             ctx.beginPath(); ctx.arc(sunX, sunY, 4.5, 0, 2*Math.PI); ctx.fill(); ctx.shadowBlur = 0;
-            animId = requestAnimationFrame(updateClock);
         }
-        document.addEventListener('visibilitychange', () => { isVisible = !document.hidden; if (isVisible) updateClock(); else cancelAnimationFrame(animId); });
+        
+        function startThreads() {
+            if (!clockId) clockId = setInterval(updateClock, 1000);
+            if (!starId) starId = setInterval(drawStars, 4000);
+        }
+        function stopThreads() {
+            clearInterval(clockId); clearInterval(starId); clockId = null; starId = null;
+        }
+
+        document.addEventListener('visibilitychange', () => { 
+            isVisible = !document.hidden; 
+            if (isVisible) { updateClock(); startThreads(); } else { stopThreads(); } 
+        });
         window.addEventListener('resize', resizeCanvases);
-        window.onload = () => { resizeCanvases(); if(cfg.mode === 'auto') initGPS(); updateClock(); starId = setInterval(drawStars, 4000); };
+        window.onload = () => { resizeCanvases(); if(cfg.mode === 'auto') initGPS(); updateClock(); startThreads(); };
     </script>
 </body>
 </html>
