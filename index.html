@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>True Solar Clock</title>
     <style>
         :root { --bg: #050510; --glass: rgba(255, 255, 255, 0.03); --border: rgba(255, 255, 255, 0.08); --text: #e2e8f0; --accent: #fbbf24; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
-        body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; transition: background 1s ease; }
+        html, body { width: 100vw; height: 100vh; overflow: hidden; position: fixed; }
+        body { background: var(--bg); color: var(--text); display: flex; align-items: center; justify-content: center; transition: background 1s ease; }
         #stars { position: absolute; inset: 0; pointer-events: none; opacity: 0.3; }
         .clock-card { width: 340px; padding: 24px 16px 16px 16px; background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); z-index: 10; position: relative; text-align: center; }
         .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; width: 100%; }
@@ -58,7 +59,6 @@
         let animId, starId, isVisible = true;
         const cv = document.getElementById('canvas'), ctx = cv.getContext('2d');
         const scv = document.getElementById('stars'), sctx = scv.getContext('2d');
-        
         let lastTheme = '', lastPhase = '', lastAccent = '';
 
         function resizeCanvases() {
@@ -69,7 +69,7 @@
         }
         function togglePanel(open) { 
             document.getElementById('panel').classList.toggle('open', open);
-            if(open) { document.getElementById('lat').value = cfg.lat.toFixed(4); document.getElementById('lng').value = cfg.lng.toFixed(4); document.getElementById('mode').value = cfg.mode; }
+            if(open) { document.getElementById('lat').value = cfg.lat.toFixed(4); document.getElementById('lng').value = cfg.lng.toFixed(4); document.getElementById('mode').value = cfg.mode; switchMode(cfg.mode); }
         }
         function switchMode(m) { document.getElementById('lat').disabled = document.getElementById('lng').disabled = (m === 'auto'); }
         function validate() {
@@ -79,13 +79,13 @@
         function saveAstro() {
             cfg.mode = document.getElementById('mode').value;
             cfg.lat = parseFloat(document.getElementById('lat').value) || 0; cfg.lng = parseFloat(document.getElementById('lng').value) || 0;
-            localStorage.setItem('solar_cfg', JSON.stringify(cfg)); togglePanel(false); if(cfg.mode === 'auto') initGPS();
+            localStorage.setItem('solar_cfg', JSON.stringify(cfg)); togglePanel(false); if(cfg.mode === 'auto') initGPS(); else updateClock();
         }
         function initGPS() {
             if (!navigator.geolocation) return;
             navigator.geolocation.getCurrentPosition(p => {
                 if(cfg.mode !== 'auto') return;
-                cfg.lat = p.coords.latitude; cfg.lng = p.coords.longitude;
+                cfg.lat = p.coords.latitude; cfg.lng = p.coords.longitude; updateClock();
             }, null, { timeout: 5000, maximumAge: 300000 });
         }
         function drawStars() {
@@ -93,7 +93,7 @@
             for(let i=0; i<30; i++) { sctx.globalAlpha = 0.1 + Math.random()*0.6; sctx.fillRect(Math.random()*scv.clientWidth, Math.random()*scv.clientHeight, 1.2, 1.2); }
         }
         function getEoT(d) {
-            let start = new Date(d.getFullYear(), 0, 1), n = Math.floor((d - start) / 86400000), b = (2 * Math.PI * (n - 81)) / 3 canvas = 365;
+            let start = new Date(d.getFullYear(), 0, 1), n = Math.floor((d - start) / 86400000), b = (2 * Math.PI * (n - 81)) / 365;
             return 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
         }
         function formatAMPM(date) {
@@ -122,7 +122,6 @@
             let targetClass = `diff-tag ${totalDriftMins >= 0 ? 'diff-plus' : 'diff-minus'}`;
             if(diffEl.className !== targetClass) diffEl.className = targetClass;
             
-            // Updates text node directly without tearing down standard element layout
             document.getElementById('std-time').firstChild.textContent = `Std: ${stdStr} `;
 
             const sHrs = solarNow.getHours() + solarNow.getMinutes()/60 + solarNow.getSeconds()/3600;
