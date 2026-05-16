@@ -56,23 +56,16 @@
     </div>
     <script>
         let cfg = JSON.parse(localStorage.getItem('solar_cfg')) || { mode: 'auto', lat: 14.41, lng: 120.99 };
-        let clockId, starId, isVisible = true;
+        let animId, starId, isVisible = true;
         const cv = document.getElementById('canvas'), ctx = cv.getContext('2d');
         const scv = document.getElementById('stars'), sctx = scv.getContext('2d');
         let lastTheme = '', lastPhase = '', lastAccent = '';
-
-        // --- TIME ACCELERATION CONFIGURATION ---
-        // Change 1 to 60 to make time move 60x faster (1 real second = 1 simulation minute)
-        // Change 1 to 3600 to make time move 3600x faster (1 real second = 1 simulation hour)
-        const timeMultiplier = 1; 
-        let simulationOffsetMs = 0;
-        let lastRealTimeMs = Date.now();
 
         function resizeCanvases() {
             const dpr = window.devicePixelRatio || 1;
             cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; ctx.scale(dpr, dpr);
             scv.width = window.innerWidth * dpr; scv.height = window.innerHeight * dpr; sctx.scale(dpr, dpr);
-            drawStars(); if(!isVisible) updateClock();
+            drawStars();
         }
         function togglePanel(open) { 
             document.getElementById('panel').classList.toggle('open', open);
@@ -86,13 +79,13 @@
         function saveAstro() {
             cfg.mode = document.getElementById('mode').value;
             cfg.lat = parseFloat(document.getElementById('lat').value) || 0; cfg.lng = parseFloat(document.getElementById('lng').value) || 0;
-            localStorage.setItem('solar_cfg', JSON.stringify(cfg)); togglePanel(false); if(cfg.mode === 'auto') initGPS(); else updateClock();
+            localStorage.setItem('solar_cfg', JSON.stringify(cfg)); togglePanel(false); if(cfg.mode === 'auto') initGPS();
         }
         function initGPS() {
             if (!navigator.geolocation) return;
             navigator.geolocation.getCurrentPosition(p => {
                 if(cfg.mode !== 'auto') return;
-                cfg.lat = p.coords.latitude; cfg.lng = p.coords.longitude; updateClock();
+                cfg.lat = p.coords.latitude; cfg.lng = p.coords.longitude;
             }, null, { timeout: 5000, maximumAge: 300000 });
         }
         function drawStars() {
@@ -110,15 +103,7 @@
         }
         function updateClock() {
             if (!isVisible) return;
-            
-            // Calculate accelerated time baseline
-            const currentRealTimeMs = Date.now();
-            const deltaRealMs = currentRealTimeMs - lastRealTimeMs;
-            lastRealTimeMs = currentRealTimeMs;
-            simulationOffsetMs += deltaRealMs * (timeMultiplier - 1);
-            
-            const now = new Date(currentRealTimeMs + simulationOffsetMs);
-            const eotMins = getEoT(now), localLong = cfg.lng, timezoneOffsetHrs = -now.getTimezoneOffset() / 60;
+            const now = new Date(), eotMins = getEoT(now), localLong = cfg.lng, timezoneOffsetHrs = -now.getTimezoneOffset() / 60;
             const lstam = (timezoneOffsetHrs === 8) ? 120 : (timezoneOffsetHrs * 15);
             const longCorrMins = 4 * (localLong - lstam), totalDriftMins = eotMins + longCorrMins;
             const solarNow = new Date(now.getTime() + totalDriftMins * 60000);
@@ -176,22 +161,16 @@
             let sunX = (sHrs / 24) * w, sunY = (h / 2) - Math.sin(sunAngle) * (h / 2 - 8);
             ctx.shadowBlur = 10; ctx.shadowColor = accent; ctx.fillStyle = accent;
             ctx.beginPath(); ctx.arc(sunX, sunY, 4.5, 0, 2*Math.PI); ctx.fill(); ctx.shadowBlur = 0;
-        }
-        
-        function startThreads() {
-            if (!clockId) clockId = setInterval(updateClock, 100);
-            if (!starId) starId = setInterval(drawStars, 4000);
-        }
-        function stopThreads() {
-            clearInterval(clockId); clearInterval(starId); clockId = null; starId = null;
+            
+            animId = requestAnimationFrame(updateClock);
         }
 
         document.addEventListener('visibilitychange', () => { 
             isVisible = !document.hidden; 
-            if (isVisible) { lastRealTimeMs = Date.now(); updateClock(); startThreads(); } else { stopThreads(); } 
+            if (isVisible) { updateClock(); } else { cancelAnimationFrame(animId); } 
         });
         window.addEventListener('resize', resizeCanvases);
-        window.onload = () => { resizeCanvases(); if(cfg.mode === 'auto') initGPS(); updateClock(); startThreads(); };
+        window.onload = () => { resizeCanvases(); if(cfg.mode === 'auto') initGPS(); updateClock(); starId = setInterval(drawStars, 4000); };
     </script>
 </body>
 </html>
