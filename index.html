@@ -356,6 +356,7 @@
     let isAutoGPS = true;
     let timerId = null;
     let resizeTimeout = null;
+    let globalAccentColor = '#a78bfa'; // Native script-level color state tracking
 
     // High performance device pixel matching sizing function
     function initCanvas() {
@@ -384,9 +385,10 @@
         return longitudinalOffsetMinutes + eotMinutes;
     }
 
-    // High fidelity custom Canvas vector arc generator 
+    // Fixed color isolation layer - skips unsafe layout-blocking DOM read operations
     function drawSolarArc(timeDecimal) {
         const canvas = document.getElementById('solar-canvas');
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
         const w = canvas.width;
         const h = canvas.height;
@@ -402,9 +404,9 @@
         ctx.lineTo(w, h * 0.7);
         ctx.stroke();
 
-        // Calculate continuous mathematical sine pathway curve matching diurnal cycles
+        // Calculate continuous sine path using decoupled static memory states
         ctx.beginPath();
-        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || '#a78bfa';
+        ctx.strokeStyle = globalAccentColor;
         ctx.lineWidth = 2 * dpr;
         
         for (let x = 0; x <= w; x++) {
@@ -416,12 +418,12 @@
         }
         ctx.stroke();
 
-        // Track and map precise orbital coordinate indicator nodes
+        // Track precise sun nodes across the coordinate system
         const sunX = (timeDecimal / 24) * w;
         const sunY = (h * 0.5) + Math.sin((timeDecimal - 6) * Math.PI / 12) * (h * 0.4);
 
         ctx.shadowBlur = 15 * dpr;
-        ctx.shadowColor = ctx.strokeStyle;
+        ctx.shadowColor = globalAccentColor;
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(sunX, sunY, 5 * dpr, 0, Math.PI * 2);
@@ -456,11 +458,10 @@
     function requestGPSLocation() {
         if (!isAutoGPS || !navigator.geolocation) return;
         
-        // Indoor-optimized location lookup parameters
         const geoOptions = { 
             enableHighAccuracy: false, 
             timeout: 8000, 
-            maximumAge: 300000 // Allow up to 5-minute old cached device coordinates
+            maximumAge: 300000 
         };
         
         navigator.geolocation.getCurrentPosition(
@@ -474,7 +475,6 @@
             },
             () => {
                 if(!isAutoGPS) return;
-                // Soft network lookup fallback
                 const tzOffsetHours = -(new Date().getTimezoneOffset() / 60);
                 currentLongitude = tzOffsetHours * 15;
                 document.getElementById('geo-status').textContent = "⚠️ Center Meridian Mode";
@@ -529,6 +529,7 @@
         }
 
         if (root.style.getPropertyValue('--accent-color') !== accent) {
+            globalAccentColor = accent; // Sync static reference token
             root.style.setProperty('--bg-gradient', bg);
             root.style.setProperty('--accent-color', accent);
             root.style.setProperty('--glow-color', glow);
@@ -555,4 +556,4 @@
         driftBadge.className = `drift-badge ${totalOffsetMinutes >= 0 ? 'drift-ahead' : 'drift-behind'}`;
 
         const solarInfo = formatTime12Hour(new Date(now.getTime() + (totalOffsetMinutes * 60000)));
-        document.getElementById('
+        document.getElementById('solar-clock').textContent = solarIn
