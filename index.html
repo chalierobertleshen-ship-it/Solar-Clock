@@ -3,10 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>True Solar Position Clock (AM/PM)</title>
+    <title>Dynamic Precision Solar Clock</title>
     <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+            --accent-color: #fbbf24;
+            --glow-color: rgba(251, 191, 36, 0.2);
+        }
+        
         body {
-            background-color: #0b0f19;
+            background: var(--bg-gradient);
             color: #f0f6fc;
             font-family: system-ui, -apple-system, sans-serif;
             display: flex;
@@ -14,43 +20,70 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            transition: background 1s ease;
         }
         .clock-box {
-            background: #111827;
-            border: 2px solid #1f2937;
-            border-radius: 16px;
-            padding: 2.5rem;
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 3rem;
             text-align: center;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            max-width: 460px;
             width: 100%;
+            transition: all 0.5s ease;
         }
         .title {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             color: #9ca3af;
             margin-bottom: 0.5rem;
         }
         .solar-time {
-            font-size: 3.4rem;
-            font-weight: 800;
-            color: #fbbf24; /* Solar Gold */
+            font-size: 3.5rem;
+            font-weight: 900;
+            color: var(--accent-color);
             font-variant-numeric: tabular-nums;
             margin: 0.5rem 0;
-            text-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+            text-shadow: 0 0 25px var(--glow-color);
             white-space: nowrap;
+            transition: color 0.5s ease, text-shadow 0.5s ease;
+        }
+        .meta-container {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
         }
         .standard-time {
-            font-size: 1.1rem;
-            color: #6b7280;
-            margin-bottom: 1.5rem;
+            color: #9ca3af;
+        }
+        .drift-badge {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .drift-ahead {
+            color: #34d399;
+            background: rgba(52, 211, 153, 0.1);
+        }
+        .drift-behind {
+            color: #f87171;
+            background: rgba(248, 113, 113, 0.1);
         }
         .geo-data {
             font-size: 0.85rem;
-            background: #1f2937;
-            padding: 8px 12px;
-            border-radius: 8px;
+            background: rgba(31, 41, 55, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 8px 16px;
+            border-radius: 20px;
             color: #10b981;
             display: inline-block;
         }
@@ -61,43 +94,47 @@
 <div class="clock-box">
     <div class="title">True Solar Time</div>
     <div class="solar-time" id="solar-clock">12:00:00 AM</div>
-    <div class="standard-time" id="standard-clock">Standard: --:--:-- --</div>
+    
+    <div class="meta-container">
+        <span class="standard-time" id="standard-clock">Std: --:--:-- --</span>
+        <span class="drift-badge" id="drift-clock">0.0m diff</span>
+    </div>
+    
     <div class="geo-data" id="geo-status">📡 Requesting GPS Location...</div>
 </div>
 
 <script>
     let solarOffsetMinutes = 0; 
-    let currentLongitude = null;
 
-    // 1. Convert exact longitude into precise physical solar offset
     function calculateSolarOffset(longitude) {
-        // Find standard timezone offset of the device in hours
         const tzOffsetHours = -(new Date().getTimezoneOffset() / 60);
-        
-        // Find central meridian longitude for this standard timezone
         const standardMeridian = tzOffsetHours * 15; 
-        
-        // Calculate degrees away from timezone center
         const degreeDifference = longitude - standardMeridian;
-        
-        // 1 degree of longitude = exactly 4 minutes of true time shift
         return degreeDifference * 4; 
     }
 
-    // 2. Capture GPS securely
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                currentLongitude = position.coords.longitude;
-                const latitude = position.coords.latitude;
-                
-                solarOffsetMinutes = calculateSolarOffset(currentLongitude);
+                const lon = position.coords.longitude;
+                const lat = position.coords.latitude;
+                solarOffsetMinutes = calculateSolarOffset(lon);
                 
                 document.getElementById('geo-status').textContent = 
-                    `📍 Lat: ${latitude.toFixed(2)} | Lon: ${currentLongitude.toFixed(2)}`;
+                    `📍 Lat: ${lat.toFixed(2)} | Lon: ${lon.toFixed(2)}`;
+                
+                // Update the difference display badge
+                const driftBadge = document.getElementById('drift-clock');
+                const absDiff = Math.abs(solarOffsetMinutes).toFixed(1);
+                if (solarOffsetMinutes >= 0) {
+                    driftBadge.textContent = `+${absDiff}m ahead of wall clock`;
+                    driftBadge.className = "drift-badge drift-ahead";
+                } else {
+                    driftBadge.textContent = `-${absDiff}m behind wall clock`;
+                    driftBadge.className = "drift-badge drift-behind";
+                }
             },
             (error) => {
-                console.warn("GPS access denied. Defaulting to center meridian.");
                 solarOffsetMinutes = 0; 
                 document.getElementById('geo-status').textContent = "⚠️ Using Standard Time Center";
                 document.getElementById('geo-status').style.color = "#ef4444";
@@ -106,7 +143,6 @@
         );
     }
 
-    // Helper formatting function to force clean AM/PM rendering without engine drift
     function formatTime12Hour(dateObj) {
         let hours = dateObj.getHours();
         const minutes = String(dateObj.getMinutes()).padStart(2, '0');
@@ -114,25 +150,48 @@
         const ampm = hours >= 12 ? 'PM' : 'AM';
         
         hours = hours % 12;
-        hours = hours ? hours : 12; // The hour '0' should be '12'
-        const hoursStr = String(hours).padStart(2, '0');
-        
-        return `${hoursStr}:${minutes}:${seconds} ${ampm}`;
+        hours = hours ? hours : 12;
+        return {
+            string: `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`,
+            ampm: ampm,
+            rawHours: dateObj.getHours()
+        };
     }
 
-    // 3. Main isolated rendering loop
+    function updateThemes(solarInfo) {
+        const root = document.documentElement;
+        const isNight = solarInfo.rawHours < 6 || solarInfo.rawHours >= 18;
+        
+        // 1. Dynamic Background Logic based on true solar position
+        if (isNight) {
+            root.style.setProperty('--bg-gradient', 'linear-gradient(135deg, #020617 0%, #0f172a 100%)');
+        } else {
+            root.style.setProperty('--bg-gradient', 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)');
+        }
+
+        // 2. Text styling changes based strictly on AM vs PM
+        if (solarInfo.ampm === 'AM') {
+            root.style.setProperty('--accent-color', '#fbbf24'); // Sun Gold
+            root.style.setProperty('--glow-color', 'rgba(251, 191, 36, 0.3)');
+        } else {
+            root.style.setProperty('--accent-color', '#f87171'); // Soft Coral Sunset
+            root.style.setProperty('--glow-color', 'rgba(248, 113, 113, 0.3)');
+        }
+    }
+
     function tick() {
         const now = new Date();
-        
-        // Display Standard Wall Clock in AM/PM
-        document.getElementById('standard-clock').textContent = `Standard Wall Clock: ${formatTime12Hour(now)}`;
+        const stdInfo = formatTime12Hour(now);
+        document.getElementById('standard-clock').textContent = `Std: ${stdInfo.string}`;
 
-        // Calculate and shift standard time into true solar AM/PM time
         const solarDate = new Date(now.getTime() + (solarOffsetMinutes * 60000));
-        document.getElementById('solar-clock').textContent = formatTime12Hour(solarDate);
+        const solarInfo = formatTime12Hour(solarDate);
+        
+        document.getElementById('solar-clock').textContent = solarInfo.string;
+        
+        updateThemes(solarInfo);
     }
 
-    // Run interval cleanly
     setInterval(tick, 1000);
     tick();
 </script>
