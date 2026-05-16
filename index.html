@@ -9,53 +9,52 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
         body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; transition: background 1s ease; }
         #stars { position: absolute; inset: 0; pointer-events: none; opacity: 0.3; }
-        .clock-card { width: 340px; padding: 16px; background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); z-index: 10; position: relative; overflow: hidden; }
-        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        h1 { font-size: 0.95rem; font-weight: 600; color: var(--accent); letter-spacing: 0.5px; }
-        .btn { background: var(--glass); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; transition: 0.2s; }
-        .btn:hover { background: rgba(255,255,255,0.1); }
-        #canvas { width: 100%; height: 80px; display: block; margin-bottom: 12px; }
-        .time-display { text-align: center; margin-bottom: 12px; }
-        #solar-time { font-size: 2.2rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -1px; }
-        #std-time { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
-        .drift-box { background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.7rem; margin-bottom: 4px; }
-        .drift-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; text-align: center; margin-top: 4px; font-variant-numeric: tabular-nums; font-weight: bold; }
-        #panel { position: absolute; inset: 0; background: #0b0f19; padding: 16px; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; gap: 8px; z-index: 20; }
+        .clock-card { width: 340px; padding: 24px 16px 16px 16px; background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); z-index: 10; position: relative; text-align: center; }
+        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; width: 100%; }
+        h1 { font-size: 0.75rem; font-weight: 500; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase; width: 100%; text-align: center; margin-left: 24px; }
+        .phase-tag { font-size: 0.85rem; font-weight: 700; color: #a5b4fc; text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; }
+        .btn-gear { background: none; border: none; color: #94a3b8; font-size: 1.1rem; cursor: pointer; transition: 0.2s; padding: 4px; }
+        .btn-gear:hover { color: #fff; }
+        #canvas { width: 100%; height: 60px; display: block; margin: 8px 0; }
+        #solar-time { font-size: 2.4rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -0.5px; color: #fff; margin-top: 12px; }
+        #std-time { font-size: 0.8rem; color: #94a3b8; margin-top: 8px; font-variant-numeric: tabular-nums; }
+        .diff-tag { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
+        .diff-plus { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+        .diff-minus { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+        .geo-tag { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; color: #94a3b8; font-variant-numeric: tabular-nums; margin-top: 16px; }
+        #panel { position: absolute; inset: 0; background: #0b0f19; padding: 16px; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; gap: 8px; z-index: 20; text-align: left; }
         #panel.open { transform: translateX(0); }
+        .panel-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         label { font-size: 0.7rem; color: #94a3b8; display: flex; flex-direction: column; gap: 4px; }
         input, select { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: #fff; padding: 6px; border-radius: 6px; font-size: 0.8rem; }
+        .btn-action { background: var(--glass); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; }
     </style>
 </head>
 <body>
     <canvas id="stars"></canvas>
     <div class="clock-card">
         <div class="row">
-            <h1 id="status">Solar Clock</h1>
-            <button class="btn" onclick="togglePanel(true)">⚙️ Astro</button>
+            <div>
+                <h1>True Solar Time</h1>
+                <div id="phase" class="phase-tag">🌌 Deep Midnight</div>
+            </div>
+            <button class="btn-gear" onclick="togglePanel(true)">⚙️</button>
         </div>
         <canvas id="canvas"></canvas>
-        <div class="time-display">
-            <div id="solar-time">00:00:00</div>
-            <div id="std-time">Standard: --:--:--</div>
-        </div>
-        <div class="drift-box">
-            <div style="color:#94a3b8; text-align:center;">TOTAL SOLAR DRIFT (EOT + LONGITUDE)</div>
-            <div class="drift-grid">
-                <div><span id="d-hrs">00</span>h</div>
-                <div><span id="d-mins">00</span>m</div>
-                <div><span id="d-secs">00</span>s</div>
-            </div>
-        </div>
+        <div id="solar-time">00:00:00 AM</div>
+        <div id="std-time">Std: --:--:-- <span id="diff" class="diff-tag">--</span></div>
+        <div class="geo-tag">📍 <span id="geo-coords">0.00 | 0.00</span></div>
+        
         <div id="panel">
-            <div class="row"><h1 style="color:#fff">Astro Settings</h1><button class="btn" onclick="togglePanel(false)">✕ Close</button></div>
+            <div class="panel-row"><h2 style="font-size:0.95rem; color:#fff">Astro Settings</h2><button class="btn-action" onclick="togglePanel(false)">✕ Close</button></div>
             <label>Mode<select id="mode" onchange="switchMode(this.value)"><option value="auto">Auto (GPS)</option><option value="manual">Manual</option></select></label>
             <label>Latitude (-90 to 90)<input type="number" id="lat" step="any" min="-90" max="90" onchange="validate()"></label>
             <label>Longitude (-180 to 180)<input type="number" id="lng" step="any" min="-180" max="180" onchange="validate()"></label>
-            <button class="btn" style="margin-top:auto; padding:8px; background:var(--accent); color:#000; font-weight:bold;" onclick="saveAstro()">Apply & Save</button>
+            <button class="btn-action" style="margin-top:auto; padding:8px; background:var(--accent); color:#000; font-weight:bold;" onclick="saveAstro()">Apply & Save</button>
         </div>
     </div>
     <script>
-        let cfg = JSON.parse(localStorage.getItem('solar_cfg')) || { mode: 'auto', lat: 0, lng: 0 };
+        let cfg = JSON.parse(localStorage.getItem('solar_cfg')) || { mode: 'auto', lat: 14.41, lng: 120.99 };
         let animId, starId, isVisible = true;
         const cv = document.getElementById('canvas'), ctx = cv.getContext('2d');
         const scv = document.getElementById('stars'), sctx = scv.getContext('2d');
@@ -85,64 +84,82 @@
             navigator.geolocation.getCurrentPosition(p => {
                 if(cfg.mode !== 'auto') return;
                 cfg.lat = p.coords.latitude; cfg.lng = p.coords.longitude;
-                document.getElementById('status').innerText = "☀️ Solar Clock (GPS)";
-            }, () => { if(cfg.mode === 'auto') document.getElementById('status').innerText = "☀️ Solar Clock (Fallback)"; }, { timeout: 5000, maximumAge: 300000 });
+            }, null, { timeout: 5000, maximumAge: 300000 });
         }
         function drawStars() {
             if (!isVisible) return; sctx.clearRect(0,0,scv.width,scv.height); sctx.fillStyle = '#fff';
-            for(let i=0; i<60; i++) { sctx.globalAlpha = 0.1 + Math.random()*0.8; sctx.fillRect(Math.random()*scv.clientWidth, Math.random()*scv.clientHeight, 1.5, 1.5); }
+            for(let i=0; i<45; i++) { sctx.globalAlpha = 0.1 + Math.random()*0.7; sctx.fillRect(Math.random()*scv.clientWidth, Math.random()*scv.clientHeight, 1.2, 1.2); }
         }
         function getEoT(d) {
             let start = new Date(d.getFullYear(), 0, 1), n = Math.floor((d - start) / 86400000), b = (2 * Math.PI * (n - 81)) / 365;
             return 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
         }
+        function formatAMPM(date) {
+            let hours = date.getHours(), minutes = date.getMinutes(), seconds = date.getSeconds();
+            let ampm = hours >= 12 ? 'PM' : 'AM'; hours = hours % 12; hours = hours ? hours : 12;
+            return `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')} ${ampm}`;
+        }
         function updateClock() {
             if (!isVisible) return;
             const now = new Date(), eotMins = getEoT(now), localLong = cfg.lng, timezoneOffsetHrs = -now.getTimezoneOffset() / 60;
-            
-            // Hardcoded native meridian fix for the Philippines (UTC+8 keeps its true 120° reference)
             const lstam = (timezoneOffsetHrs === 8) ? 120 : (timezoneOffsetHrs * 15);
-            
             const longCorrMins = 4 * (localLong - lstam), totalDriftMins = eotMins + longCorrMins;
             const solarNow = new Date(now.getTime() + totalDriftMins * 60000);
             
-            document.getElementById('solar-time').innerText = solarNow.toTimeString().split(' ')[0];
-            document.getElementById('std-time').innerText = `Standard: ${now.toTimeString().split(' ')[0]} (UTC${timezoneOffsetHrs >= 0 ? '+' : ''}${timezoneOffsetHrs})`;
+            document.getElementById('solar-time').innerText = formatAMPM(solarNow);
+            document.getElementById('geo-coords').innerText = `${cfg.lat.toFixed(2)} | ${cfg.lng.toFixed(2)}`;
             
-            const totSecs = Math.abs(Math.round(totalDriftMins * 60));
-            document.getElementById('d-hrs').innerText = String(Math.floor(totSecs / 3600)).padStart(2,'0');
-            document.getElementById('d-mins').innerText = String(Math.floor((totSecs % 3600) / 60)).padStart(2,'0');
-            document.getElementById('d-secs').innerText = String(totSecs % 60).padStart(2,'0');
-            document.getElementById('d-hrs').parentElement.parentElement.style.color = totalDriftMins >= 0 ? '#4ade80' : '#f87171';
+            let stdStr = now.toTimeString().split(' ');
+            let diffSecs = Math.round(totalDriftMins * 60);
+            let diffSign = diffSecs >= 0 ? '+' : '-'; diffSecs = Math.abs(diffSecs);
+            let m = Math.floor(diffSecs / 60), s = diffSecs % 60;
+            
+            const diffEl = document.getElementById('diff');
+            diffEl.innerText = `${diffSign}${m}m ${s}s diff`;
+            diffEl.className = `diff-tag ${totalDriftMins >= 0 ? 'diff-plus' : 'diff-minus'}`;
+            document.getElementById('std-time').innerHTML = `Std: ${stdStr} ${diffEl.outerHTML}`;
 
             const sHrs = solarNow.getHours() + solarNow.getMinutes()/60 + solarNow.getSeconds()/3600;
-            let theme = '#050510', accent = '#fbbf24';
-            if (sHrs >= 5 && sHrs < 7) theme = 'linear-gradient(135deg, #2e1065, #7c2d12)'; 
-            else if (sHrs >= 7 && sHrs < 17) { theme = 'linear-gradient(135deg, #0f172a, #1e3a8a)'; accent = '#f59e0b'; }
-            else if (sHrs >= 17 && sHrs < 19) theme = 'linear-gradient(135deg, #4c1d95, #7c2d12)';
+            let theme = '#050510', accent = '#fbbf24', phase = '🌌 Midnight';
+            
+            if (sHrs >= 0 && sHrs < 5) { 
+                theme = 'linear-gradient(135deg, #020208, #050515)'; phase = '🌌 Deep Midnight'; 
+            } else if (sHrs >= 5 && sHrs < 6) { 
+                theme = 'linear-gradient(135deg, #2e1065, #7c2d12)'; phase = '🌅 Sunrise'; 
+            } else if (sHrs >= 6 && sHrs < 12) { 
+                theme = 'linear-gradient(135deg, #0f172a, #1e3a8a)'; accent = '#fbbf24'; phase = '🌤️ Morning'; 
+            } else if (sHrs >= 12 && sHrs < 17) { 
+                theme = 'linear-gradient(135deg, #1e293b, #2563eb)'; accent = '#f59e0b'; phase = '☀️ Noon & Afternoon'; 
+            } else if (sHrs >= 17 && sHrs < 18) { 
+                theme = 'linear-gradient(135deg, #4c1d95, #7c2d12)'; phase = '🌇 Sunset'; 
+            } else if (sHrs >= 18 && sHrs < 24) { 
+                theme = 'linear-gradient(135deg, #060612, #110924)'; accent = '#e2e8f0'; phase = '🌙 Evening'; 
+            }
+            
             document.body.style.background = theme; document.documentElement.style.setProperty('--accent', accent);
+            document.getElementById('phase').innerText = phase;
 
             const w = cv.clientWidth, h = cv.clientHeight; ctx.clearRect(0,0,w,h);
-            ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1; ctx.setLineDash();
+            ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1; ctx.setLineDash();
             ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke(); ctx.setLineDash([]);
             
-            ctx.beginPath(); ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5;
             for(let x=0; x<=w; x++) {
                 let angle = ((x/w) * 2 * Math.PI) - (Math.PI / 2);
-                let cy = (h / 2) - Math.sin(angle) * (h / 2 - 10);
+                let cy = (h / 2) - Math.sin(angle) * (h / 2 - 8);
                 if(x===0) ctx.moveTo(x,cy); else ctx.lineTo(x,cy);
             }
             ctx.stroke();
 
             let sunAngle = ((sHrs / 24) * 2 * Math.PI) - (Math.PI / 2);
-            let sunX = (sHrs / 24) * w, sunY = (h / 2) - Math.sin(sunAngle) * (h / 2 - 10);
-            ctx.shadowBlur = 12; ctx.shadowColor = accent; ctx.fillStyle = accent;
-            ctx.beginPath(); ctx.arc(sunX, sunY, 5, 0, 2*Math.PI); ctx.fill(); ctx.shadowBlur = 0;
+            let sunX = (sHrs / 24) * w, sunY = (h / 2) - Math.sin(sunAngle) * (h / 2 - 8);
+            ctx.shadowBlur = 10; ctx.shadowColor = accent; ctx.fillStyle = accent;
+            ctx.beginPath(); ctx.arc(sunX, sunY, 4.5, 0, 2*Math.PI); ctx.fill(); ctx.shadowBlur = 0;
             animId = requestAnimationFrame(updateClock);
         }
         document.addEventListener('visibilitychange', () => { isVisible = !document.hidden; if (isVisible) updateClock(); else cancelAnimationFrame(animId); });
         window.addEventListener('resize', resizeCanvases);
-        window.onload = () => { resizeCanvases(); if(cfg.mode === 'auto') initGPS(); else document.getElementById('status').innerText = "☀️ Solar Clock (Manual)"; updateClock(); starId = setInterval(drawStars, 4000); };
+        window.onload = () => { resizeCanvases(); if(cfg.mode === 'auto') initGPS(); updateClock(); starId = setInterval(drawStars, 4000); };
     </script>
 </body>
 </html>
