@@ -410,7 +410,6 @@
         for (let x = 0; x <= w; x++) {
             const pct = x / w;
             const hourValue = pct * 24;
-            // Map 6AM to peak high curve calculation metrics
             const y = (h * 0.5) + Math.sin((hourValue - 6) * Math.PI / 12) * (h * 0.4);
             if (x === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
@@ -428,7 +427,6 @@
         ctx.arc(sunX, sunY, 5 * dpr, 0, Math.PI * 2);
         ctx.fill();
         
-        // Zero outer pipeline memory traces
         ctx.shadowBlur = 0;
     }
 
@@ -443,12 +441,31 @@
         tick();
     }
 
+    // Set immediate non-blocking fallback values matching current system timezone meridian
+    function initializeTimezoneFallback() {
+        const tzOffsetHours = -(new Date().getTimezoneOffset() / 60);
+        currentLongitude = tzOffsetHours * 15; 
+        currentLatitude = 0.0000;
+        
+        document.getElementById('input-lat').value = currentLatitude.toFixed(4);
+        document.getElementById('input-lon').value = currentLongitude.toFixed(4);
+        document.getElementById('geo-status').textContent = "📡 Syncing Indoor Matrix...";
+        tick();
+    }
+
     function requestGPSLocation() {
         if (!isAutoGPS || !navigator.geolocation) return;
         
+        // Indoor-optimized location lookup parameters
+        const geoOptions = { 
+            enableHighAccuracy: false, 
+            timeout: 8000, 
+            maximumAge: 300000 // Allow up to 5-minute old cached device coordinates
+        };
+        
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                if(!isAutoGPS) return; // Guard logic race condition
+                if(!isAutoGPS) return; 
                 currentLongitude = position.coords.longitude;
                 currentLatitude = position.coords.latitude;
                 document.getElementById('input-lat').value = currentLatitude.toFixed(4);
@@ -457,10 +474,14 @@
             },
             () => {
                 if(!isAutoGPS) return;
+                // Soft network lookup fallback
+                const tzOffsetHours = -(new Date().getTimezoneOffset() / 60);
+                currentLongitude = tzOffsetHours * 15;
                 document.getElementById('geo-status').textContent = "⚠️ Center Meridian Mode";
                 document.getElementById('geo-status').style.color = "#ef4444";
+                tick();
             },
-            { enableHighAccuracy: true, timeout: 10000 }
+            geoOptions
         );
     }
 
@@ -534,21 +555,4 @@
         driftBadge.className = `drift-badge ${totalOffsetMinutes >= 0 ? 'drift-ahead' : 'drift-behind'}`;
 
         const solarInfo = formatTime12Hour(new Date(now.getTime() + (totalOffsetMinutes * 60000)));
-        document.getElementById('solar-clock').textContent = solarInfo.string;
-        updateAtmosphere(solarInfo);
-    }
-
-    /* Interface Drawer Controller Binding Actions */
-    const overlay = document.getElementById('overlay');
-    const gpsToggle = document.getElementById('gps-toggle');
-    const latInput = document.getElementById('input-lat');
-    const lonInput = document.getElementById('input-lon');
-
-    document.getElementById('open-settings').addEventListener('click', () => overlay.classList.add('open'));
-    document.getElementById('close-settings').addEventListener('click', () => overlay.classList.remove('open'));
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
-
-    gpsToggle.addEventListener('change', (e) => {
-        isAutoGPS = e.target.checked;
-        latInput.disabled = isAutoGPS;
-        lonInput.disabled 
+        document.getElementById('
