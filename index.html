@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Precision Solar Clock</title>
+    <title>Dynamic 4-Phase Solar Clock</title>
     <style>
         :root {
+            /* Smoothly transitioned variables */
             --bg-gradient: linear-gradient(135deg, #0f172a 0%, #020617 100%);
             --accent-color: #fbbf24;
             --glow-color: rgba(251, 191, 36, 0.2);
+            --phase-label: "Initializing";
         }
         
         body {
@@ -20,26 +22,35 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            transition: background 1s ease;
+            transition: background 1.5s ease-in-out;
         }
         .clock-box {
-            background: rgba(17, 24, 39, 0.85);
-            backdrop-filter: blur(12px);
-            border: 2px solid rgba(255, 255, 255, 0.05);
+            background: rgba(10, 15, 30, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 24px;
             padding: 3rem;
             text-align: center;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
             max-width: 460px;
             width: 100%;
-            transition: all 0.5s ease;
         }
         .title {
             font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 3px;
             color: #9ca3af;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.3rem;
+        }
+        .phase-indicator {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--accent-color);
+            margin-bottom: 1rem;
+            opacity: 0.9;
         }
         .solar-time {
             font-size: 3.5rem;
@@ -49,7 +60,7 @@
             margin: 0.5rem 0;
             text-shadow: 0 0 25px var(--glow-color);
             white-space: nowrap;
-            transition: color 0.5s ease, text-shadow 0.5s ease;
+            transition: color 1.5s ease, text-shadow 1.5s ease;
         }
         .meta-container {
             display: flex;
@@ -64,7 +75,6 @@
             color: #9ca3af;
         }
         .drift-badge {
-            background: rgba(255, 255, 255, 0.08);
             padding: 4px 10px;
             border-radius: 6px;
             font-weight: 600;
@@ -80,8 +90,8 @@
         }
         .geo-data {
             font-size: 0.85rem;
-            background: rgba(31, 41, 55, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             padding: 8px 16px;
             border-radius: 20px;
             color: #10b981;
@@ -93,6 +103,7 @@
 
 <div class="clock-box">
     <div class="title">True Solar Time</div>
+    <div class="phase-indicator" id="sky-phase">☀️ Loading Phase...</div>
     <div class="solar-time" id="solar-clock">12:00:00 AM</div>
     
     <div class="meta-container">
@@ -123,7 +134,6 @@
                 document.getElementById('geo-status').textContent = 
                     `📍 Lat: ${lat.toFixed(2)} | Lon: ${lon.toFixed(2)}`;
                 
-                // Update the difference display badge
                 const driftBadge = document.getElementById('drift-clock');
                 const absDiff = Math.abs(solarOffsetMinutes).toFixed(1);
                 if (solarOffsetMinutes >= 0) {
@@ -154,42 +164,67 @@
         return {
             string: `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`,
             ampm: ampm,
-            rawHours: dateObj.getHours()
+            rawHours: dateObj.getHours(),
+            rawMinutes: dateObj.getMinutes()
         };
     }
 
-    function updateThemes(solarInfo) {
+    function updateAtmosphere(solarInfo) {
         const root = document.documentElement;
-        const isNight = solarInfo.rawHours < 6 || solarInfo.rawHours >= 18;
+        const phaseIndicator = document.getElementById('sky-phase');
         
-        // 1. Dynamic Background Logic based on true solar position
-        if (isNight) {
-            root.style.setProperty('--bg-gradient', 'linear-gradient(135deg, #020617 0%, #0f172a 100%)');
-        } else {
-            root.style.setProperty('--bg-gradient', 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)');
+        // Convert hours + minutes to a decimal total time format (e.g., 18:30 = 18.5)
+        const timeDecimal = solarInfo.rawHours + (solarInfo.rawMinutes / 60);
+        
+        let bg, accent, glow, phaseText;
+
+        // 🌅 PHASE 1: Sunrise / Dawn (5:00 AM to 8:00 AM)
+        if (timeDecimal >= 5 && timeDecimal < 8) {
+            bg = 'linear-gradient(135deg, #2e1065 0%, #701a75 50%, #f59e0b 100%)'; // Deep Purple to Amber Gold
+            accent = '#f59e0b'; // Warm Dawn Gold
+            glow = 'rgba(245, 158, 11, 0.4)';
+            phaseText = '🌅 Sunrise Matrix';
+        }
+        // ☀️ PHASE 2: Bright Daylight Blue (8:00 AM to 5:00 PM / 17:00)
+        else if (timeDecimal >= 8 && timeDecimal < 17) {
+            bg = 'linear-gradient(135deg, #0284c7 0%, #0369a1 60%, #0f172a 100%)'; // Clear Sky Blue to Deep Base
+            accent = '#38bdf8'; // Electric Sky Blue
+            glow = 'rgba(56, 189, 248, 0.4)';
+            phaseText = '☀️ High Bright Blue Sky';
+        }
+        // 🌇 PHASE 3: Sunset / Golden Hour (5:00 PM to 8:00 PM / 17:00 to 20:00)
+        else if (timeDecimal >= 17 && timeDecimal < 20) {
+            bg = 'linear-gradient(135deg, #1e1b4b 0%, #991b1b 50%, #f43f5e 100%)'; // Midnight Blue to Crimson Sunset
+            accent = '#f43f5e'; // Crimson Sunset Red
+            glow = 'rgba(244, 63, 94, 0.4)';
+            phaseText = '🌇 Deep Crimson Sunset';
+        }
+        // 🌌 PHASE 4: Deep Absolute Midnight (8:00 PM to 5:00 AM)
+        else {
+            bg = 'linear-gradient(135deg, #020617 0%, #0b1329 100%)'; // Pure Cosmic Pitch Black / Deep Navy
+            accent = '#a78bfa'; // Cosmic Nebula Purple
+            glow = 'rgba(167, 139, 250, 0.2)';
+            phaseText = '🌌 Absolute Deep Midnight';
         }
 
-        // 2. Text styling changes based strictly on AM vs PM
-        if (solarInfo.ampm === 'AM') {
-            root.style.setProperty('--accent-color', '#fbbf24'); // Sun Gold
-            root.style.setProperty('--glow-color', 'rgba(251, 191, 36, 0.3)');
-        } else {
-            root.style.setProperty('--accent-color', '#f87171'); // Soft Coral Sunset
-            root.style.setProperty('--glow-color', 'rgba(248, 113, 113, 0.3)');
-        }
+        // Inject the styles smoothly into the CSS root variables
+        root.style.setProperty('--bg-gradient', bg);
+        root.style.setProperty('--accent-color', accent);
+        root.style.setProperty('--glow-color', glow);
+        phaseIndicator.textContent = phaseText;
     }
 
     function tick() {
         const now = new Date();
-        const stdInfo = formatTime12Hour(now);
-        document.getElementById('standard-clock').textContent = `Std: ${stdInfo.string}`;
+        document.getElementById('standard-clock').textContent = `Std: ${formatTime12Hour(now).string}`;
 
         const solarDate = new Date(now.getTime() + (solarOffsetMinutes * 60000));
         const solarInfo = formatTime12Hour(solarDate);
         
         document.getElementById('solar-clock').textContent = solarInfo.string;
         
-        updateThemes(solarInfo);
+        // Pass the solar values to determine the background engine status
+        updateAtmosphere(solarInfo);
     }
 
     setInterval(tick, 1000);
