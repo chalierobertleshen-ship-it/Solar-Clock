@@ -59,6 +59,8 @@
         const cv = document.getElementById('canvas'), ctx = cv.getContext('2d');
         const scv = document.getElementById('stars'), sctx = scv.getContext('2d');
         
+        let lastTheme = '', lastPhase = '', lastAccent = '';
+
         function resizeCanvases() {
             const dpr = window.devicePixelRatio || 1;
             cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; ctx.scale(dpr, dpr);
@@ -88,10 +90,10 @@
         }
         function drawStars() {
             if (!isVisible) return; sctx.clearRect(0,0,scv.width,scv.height); sctx.fillStyle = '#fff';
-            for(let i=0; i<45; i++) { sctx.globalAlpha = 0.1 + Math.random()*0.7; sctx.fillRect(Math.random()*scv.clientWidth, Math.random()*scv.clientHeight, 1.2, 1.2); }
+            for(let i=0; i<30; i++) { sctx.globalAlpha = 0.1 + Math.random()*0.6; sctx.fillRect(Math.random()*scv.clientWidth, Math.random()*scv.clientHeight, 1.2, 1.2); }
         }
         function getEoT(d) {
-            let start = new Date(d.getFullYear(), 0, 1), n = Math.floor((d - start) / 86400000), b = (2 * Math.PI * (n - 81)) / 365;
+            let start = new Date(d.getFullYear(), 0, 1), n = Math.floor((d - start) / 86400000), b = (2 * Math.PI * (n - 81)) / 3 canvas = 365;
             return 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
         }
         function formatAMPM(date) {
@@ -109,15 +111,19 @@
             document.getElementById('solar-time').innerText = formatAMPM(solarNow);
             document.getElementById('geo-coords').innerText = `${cfg.lat.toFixed(2)} | ${cfg.lng.toFixed(2)}`;
             
-            let stdStr = now.toTimeString().split(' ');
+            let stdStr = now.toTimeString().split(' ')[0];
             let diffSecs = Math.round(totalDriftMins * 60);
             let diffSign = diffSecs >= 0 ? '+' : '-'; diffSecs = Math.abs(diffSecs);
             let m = Math.floor(diffSecs / 60), s = diffSecs % 60;
             
             const diffEl = document.getElementById('diff');
             diffEl.innerText = `${diffSign}${m}m ${s}s diff`;
-            diffEl.className = `diff-tag ${totalDriftMins >= 0 ? 'diff-plus' : 'diff-minus'}`;
-            document.getElementById('std-time').innerHTML = `Std: ${stdStr} ${diffEl.outerHTML}`;
+            
+            let targetClass = `diff-tag ${totalDriftMins >= 0 ? 'diff-plus' : 'diff-minus'}`;
+            if(diffEl.className !== targetClass) diffEl.className = targetClass;
+            
+            // Updates text node directly without tearing down standard element layout
+            document.getElementById('std-time').firstChild.textContent = `Std: ${stdStr} `;
 
             const sHrs = solarNow.getHours() + solarNow.getMinutes()/60 + solarNow.getSeconds()/3600;
             let theme = '#050510', accent = '#fbbf24', phase = '🌌 Midnight';
@@ -136,8 +142,9 @@
                 theme = 'linear-gradient(135deg, #060612, #110924)'; accent = '#e2e8f0'; phase = '🌙 Evening'; 
             }
             
-            document.body.style.background = theme; document.documentElement.style.setProperty('--accent', accent);
-            document.getElementById('phase').innerText = phase;
+            if(lastTheme !== theme) { document.body.style.background = theme; lastTheme = theme; }
+            if(lastAccent !== accent) { document.documentElement.style.setProperty('--accent', accent); lastAccent = accent; }
+            if(lastPhase !== phase) { document.getElementById('phase').innerText = phase; lastPhase = phase; }
 
             const w = cv.clientWidth, h = cv.clientHeight; ctx.clearRect(0,0,w,h);
             ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1; ctx.setLineDash();
